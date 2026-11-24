@@ -1,0 +1,17 @@
+﻿# Java / Maven / IntelliJ
+backend/target/
+backend/.mvn/
+.idea/
+*.iml
+*.jar
+*.class
+
+# Node / React
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Sistema / VS Code
+.vscode/
+.DS_Store
+Thumbs.db

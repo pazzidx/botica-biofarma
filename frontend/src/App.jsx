@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import UsuariosPage from './pages/auth/UsuariosPage';
+import CatalogoMedicamentosPage from './pages/inventario/CatalogoMedicamentosPage';
 
 export default function App() {
   return (
@@ -13,6 +14,14 @@ export default function App() {
             element={
               <ProtectedRoute requireAuth={false}>
                 <UsuariosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/medicamentos"
+            element={
+              <ProtectedRoute allowedRoles={['ADMINISTRADORA']}>
+                <CatalogoMedicamentosPage />
               </ProtectedRoute>
             }
           />

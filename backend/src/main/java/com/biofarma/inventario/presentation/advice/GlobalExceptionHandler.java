@@ -1,7 +1,10 @@
 package com.biofarma.inventario.presentation.advice;
 
+import com.biofarma.inventario.domain.exception.CodigoMedicamentoDuplicadoException;
 import com.biofarma.inventario.domain.exception.CodigoUsuarioDuplicadoException;
+import com.biofarma.inventario.domain.exception.DatosMedicamentoInvalidosException;
 import com.biofarma.inventario.domain.exception.DatosUsuarioInvalidosException;
+import com.biofarma.inventario.domain.exception.MedicamentoNoEncontradoException;
 import com.biofarma.inventario.domain.exception.RolNoEncontradoException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
@@ -92,6 +95,48 @@ public class GlobalExceptionHandler {
         return buildResponse(
                 HttpStatus.NOT_FOUND,
                 "Rol no encontrado",
+                ex.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(DatosMedicamentoInvalidosException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidMedicamentoData(
+            DatosMedicamentoInvalidosException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Validación de negocio",
+                ex.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(CodigoMedicamentoDuplicadoException.class)
+    public ResponseEntity<ApiErrorResponse> handleDuplicateMedicamentoCode(
+            CodigoMedicamentoDuplicadoException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                "Código duplicado",
+                ex.getMessage(),
+                request.getRequestURI(),
+                Map.of("codigoProducto", ex.getMessage())
+        );
+    }
+
+    @ExceptionHandler(MedicamentoNoEncontradoException.class)
+    public ResponseEntity<ApiErrorResponse> handleMedicamentoNotFound(
+            MedicamentoNoEncontradoException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                "Medicamento no encontrado",
                 ex.getMessage(),
                 request.getRequestURI(),
                 Map.of()

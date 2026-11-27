@@ -6,38 +6,37 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Transient;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Entidad JPA mapeada exactamente a la tabla medicamentos de SQL Server (01_schema_completo.sql).
+ * Entidad JPA mapeada exactamente a la tabla Productos de SQL Server.
  */
 @Entity
-@Table(name = "medicamentos")
+@Table(name = "Productos")
 public class ProductoEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_medicamento")
+    @Column(name = "id_producto")
     private Integer idProducto;
 
-    @Column(name = "codigo", nullable = false, unique = true, length = 30)
+    @Column(name = "codigo_producto", nullable = false, unique = true, length = 30)
     private String codigoProducto;
 
-    @Column(name = "nombre", nullable = false, length = 150)
+    @Column(name = "nombre_comercial", nullable = false, length = 150)
     private String nombreComercial;
 
-    @Transient
+    @Column(name = "principio_activo", nullable = false, length = 150)
     private String principioActivo;
 
-    @Column(name = "presentacion", nullable = false, length = 100)
+    @Column(name = "presentacion", nullable = false, length = 80)
     private String presentacion;
 
-    @Transient
+    @Column(name = "laboratorio", length = 100)
     private String laboratorio;
 
-    @Column(name = "precio_unitario", nullable = false, precision = 10, scale = 2)
+    @Column(name = "precio_venta", nullable = false, precision = 10, scale = 2)
     private BigDecimal precioVenta;
 
     @Column(name = "stock_actual", nullable = false)
@@ -52,7 +51,7 @@ public class ProductoEntity {
     @Column(name = "activo", nullable = false)
     private boolean activo;
 
-    @Column(name = "fecha_creacion", nullable = false)
+    @Column(name = "fecha_registro", nullable = false)
     private LocalDateTime fechaRegistro;
 
     public ProductoEntity() {

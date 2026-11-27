@@ -2,7 +2,9 @@ package com.biofarma.inventario.presentation.advice;
 
 import com.biofarma.inventario.domain.exception.CodigoUsuarioDuplicadoException;
 import com.biofarma.inventario.domain.exception.DatosUsuarioInvalidosException;
+import com.biofarma.inventario.domain.exception.OperacionNoPermitidaException;
 import com.biofarma.inventario.domain.exception.RolNoEncontradoException;
+import com.biofarma.inventario.domain.exception.UsuarioNoEncontradoException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -92,6 +94,34 @@ public class GlobalExceptionHandler {
         return buildResponse(
                 HttpStatus.NOT_FOUND,
                 "Rol no encontrado",
+                ex.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(UsuarioNoEncontradoException.class)
+    public ResponseEntity<ApiErrorResponse> handleUserNotFound(
+            UsuarioNoEncontradoException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                "Usuario no encontrado",
+                ex.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(OperacionNoPermitidaException.class)
+    public ResponseEntity<ApiErrorResponse> handleOperationNotAllowed(
+            OperacionNoPermitidaException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.FORBIDDEN,
+                "Operación no permitida",
                 ex.getMessage(),
                 request.getRequestURI(),
                 Map.of()

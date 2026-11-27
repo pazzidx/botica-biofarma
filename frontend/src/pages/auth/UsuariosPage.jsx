@@ -54,8 +54,8 @@ function validarFormularioRegistro(form) {
 
   if (!codigo) {
     errors.codigoUsuario = 'El código de usuario es obligatorio.';
-  } else if (codigo.length < 3 || codigo.length > 30) {
-    errors.codigoUsuario = 'Debe tener entre 3 y 30 caracteres.';
+  } else if (codigo.length < 3 || codigo.length > 20) {
+    errors.codigoUsuario = 'Debe tener entre 3 y 20 caracteres.';
   } else if (!CODIGO_REGEX.test(codigo)) {
     errors.codigoUsuario = 'Solo letras, números, punto, guion y guion bajo.';
   }

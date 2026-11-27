@@ -66,13 +66,13 @@ class RegistrarUsuarioUseCaseTest {
     }
 
     @Test
-    void deberiaRegistrarUsuarioConPasswordCifradaBCrypt() {
+    void deberiaRegistrarUsuarioForzandoRolUnicoTrabajadoraYCifradoBCrypt() {
         RegistrarUsuarioRequest request = new RegistrarUsuarioRequest(
                 " trab01 ",
                 "Lucía",
-                "Quispe Ramos",
+                "Quispe Ñaupa",
                 "ClaveSegura123",
-                "TRABAJADORA"
+                null
         );
         Rol rolTrabajadora = new Rol(2, RolNombre.TRABAJADORA);
 
@@ -108,16 +108,56 @@ class RegistrarUsuarioUseCaseTest {
     }
 
     @Test
-    void deberiaRechazarCodigoDuplicado() {
+    void deberiaRechazarRegistroConRolAdministradora() {
         RegistrarUsuarioRequest request = new RegistrarUsuarioRequest(
-                "admin",
+                "admin2",
                 "Ana",
                 "Flores",
                 "ClaveSegura123",
                 "ADMINISTRADORA"
         );
 
-        when(usuarioRepository.existsByCodigoUsuario("admin")).thenReturn(true);
+        assertThrows(DatosUsuarioInvalidosException.class, () -> useCase.ejecutar(request));
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void deberiaRechazarNumerosOSimbolosEnNombresYApellidos() {
+        RegistrarUsuarioRequest requestNombreConNumero = new RegistrarUsuarioRequest(
+                "trab02",
+                "Lucia2",
+                "Quispe",
+                "ClaveSegura123",
+                "TRABAJADORA"
+        );
+        RegistrarUsuarioRequest requestApellidoConSimbolo = new RegistrarUsuarioRequest(
+                "trab03",
+                "Lucía",
+                "Quispe@Ramos",
+                "ClaveSegura123",
+                "TRABAJADORA"
+        );
+
+        when(usuarioRepository.existsByCodigoUsuario(any())).thenReturn(false);
+        when(rolRepository.findByNombre(RolNombre.TRABAJADORA))
+                .thenReturn(Optional.of(new Rol(2, RolNombre.TRABAJADORA)));
+
+        assertThrows(DatosUsuarioInvalidosException.class, () -> useCase.ejecutar(requestNombreConNumero));
+        assertThrows(DatosUsuarioInvalidosException.class, () -> useCase.ejecutar(requestApellidoConSimbolo));
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void deberiaRechazarCodigoDuplicado() {
+        RegistrarUsuarioRequest request = new RegistrarUsuarioRequest(
+                "trab01",
+                "Ana",
+                "Flores",
+                "ClaveSegura123",
+                "TRABAJADORA"
+        );
+
+        when(usuarioRepository.existsByCodigoUsuario("trab01")).thenReturn(true);
 
         assertThrows(CodigoUsuarioDuplicadoException.class, () -> useCase.ejecutar(request));
         verify(usuarioRepository, never()).save(any());

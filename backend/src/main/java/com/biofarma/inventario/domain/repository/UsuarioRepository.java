@@ -18,4 +18,8 @@ public interface UsuarioRepository {
     Optional<Usuario> findByCodigoUsuario(String codigoUsuario);
 
     List<Usuario> findAll();
+
+    long countVentasByUsuarioId(Integer idUsuario);
+
+    void deleteById(Integer idUsuario);
 }

@@ -3,18 +3,28 @@ package com.biofarma.inventario.presentation.controller;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.biofarma.inventario.application.dto.ActualizarUsuarioRequest;
+import com.biofarma.inventario.application.dto.EliminacionUsuarioResponse;
 import com.biofarma.inventario.application.dto.RegistrarUsuarioRequest;
 import com.biofarma.inventario.application.dto.UsuarioResponse;
+import com.biofarma.inventario.application.usecase.ActivarUsuarioUseCase;
+import com.biofarma.inventario.application.usecase.ActualizarUsuarioUseCase;
+import com.biofarma.inventario.application.usecase.EliminarUsuarioUseCase;
 import com.biofarma.inventario.application.usecase.ListarUsuariosUseCase;
 import com.biofarma.inventario.application.usecase.RegistrarUsuarioUseCase;
 import com.biofarma.inventario.domain.exception.CodigoUsuarioDuplicadoException;
+import com.biofarma.inventario.domain.exception.OperacionNoPermitidaException;
 import com.biofarma.inventario.infrastructure.security.SecurityConfig;
 import com.biofarma.inventario.presentation.advice.GlobalExceptionHandler;
 import java.time.LocalDateTime;
@@ -44,14 +54,23 @@ class UsuarioControllerTest {
     @MockitoBean
     private ListarUsuariosUseCase listarUsuariosUseCase;
 
+    @MockitoBean
+    private ActualizarUsuarioUseCase actualizarUsuarioUseCase;
+
+    @MockitoBean
+    private EliminarUsuarioUseCase eliminarUsuarioUseCase;
+
+    @MockitoBean
+    private ActivarUsuarioUseCase activarUsuarioUseCase;
+
     @Test
-    void deberiaRegistrarUsuarioYNoExponerPassword() throws Exception {
+    void deberiaRegistrarUsuarioTrabajadoraYNoExponerPassword() throws Exception {
         RegistrarUsuarioRequest request = new RegistrarUsuarioRequest(
                 "vendedor01",
                 "Carla",
                 "Mendoza",
                 "Clave1234",
-                "TRABAJADORA"
+                null
         );
         UsuarioResponse response = new UsuarioResponse(
                 2,
@@ -78,13 +97,13 @@ class UsuarioControllerTest {
     }
 
     @Test
-    void deberiaRetornarBadRequestCuandoFaltanCampos() throws Exception {
+    void deberiaRetornarBadRequestCuandoFaltanCamposONombresTienenNumeros() throws Exception {
         RegistrarUsuarioRequest requestInvalido = new RegistrarUsuarioRequest(
                 "",
-                "",
-                "Mendoza",
+                "Carla123",
+                "Mendoza@",
                 "123",
-                ""
+                null
         );
 
         mockMvc.perform(post("/api/v1/usuarios")
@@ -94,29 +113,101 @@ class UsuarioControllerTest {
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.fieldErrors.codigoUsuario").exists())
                 .andExpect(jsonPath("$.fieldErrors.nombres").exists())
-                .andExpect(jsonPath("$.fieldErrors.password").exists())
-                .andExpect(jsonPath("$.fieldErrors.rol").exists());
+                .andExpect(jsonPath("$.fieldErrors.apellidos").exists())
+                .andExpect(jsonPath("$.fieldErrors.password").exists());
     }
 
     @Test
     void deberiaRetornarConflictCuandoCodigoYaExiste() throws Exception {
         RegistrarUsuarioRequest request = new RegistrarUsuarioRequest(
-                "admin",
-                "Propietaria",
-                "Biofarma",
+                "trab01",
+                "Carla",
+                "Mendoza",
                 "Clave1234",
-                "ADMINISTRADORA"
+                "TRABAJADORA"
         );
 
         when(registrarUsuarioUseCase.ejecutar(any(RegistrarUsuarioRequest.class)))
-                .thenThrow(new CodigoUsuarioDuplicadoException("admin"));
+                .thenThrow(new CodigoUsuarioDuplicadoException("trab01"));
 
         mockMvc.perform(post("/api/v1/usuarios")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
-                .andExpect(jsonPath("$.message", containsString("admin")));
+                .andExpect(jsonPath("$.message", containsString("trab01")));
+    }
+
+    @Test
+    void deberiaActualizarNombresYApellidosEnPut() throws Exception {
+        ActualizarUsuarioRequest request = new ActualizarUsuarioRequest("Carla Sofía", "Mendoza Ruiz");
+        UsuarioResponse updated = new UsuarioResponse(
+                2, "vendedor01", "Carla Sofía", "Mendoza Ruiz", "TRABAJADORA", true, LocalDateTime.now()
+        );
+        when(actualizarUsuarioUseCase.ejecutar(eq(2), any(ActualizarUsuarioRequest.class))).thenReturn(updated);
+
+        mockMvc.perform(put("/api/v1/usuarios/2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombres").value("Carla Sofía"))
+                .andExpect(jsonPath("$.apellidos").value("Mendoza Ruiz"));
+    }
+
+    @Test
+    void deberiaRechazarEdicionConNumerosEnPut() throws Exception {
+        ActualizarUsuarioRequest request = new ActualizarUsuarioRequest("Carla9", "Mendoza$");
+
+        mockMvc.perform(put("/api/v1/usuarios/2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.nombres").exists())
+                .andExpect(jsonPath("$.fieldErrors.apellidos").exists());
+    }
+
+    @Test
+    void deberiaEliminarFisicamenteSiCeroVentasYDesactivarSiTieneVentas() throws Exception {
+        when(eliminarUsuarioUseCase.ejecutar(2)).thenReturn(
+                new EliminacionUsuarioResponse(2, true, "Usuario eliminado definitivamente.", null)
+        );
+        UsuarioResponse inactiva = new UsuarioResponse(
+                3, "trab02", "Rosa", "Díaz", "TRABAJADORA", false, LocalDateTime.now()
+        );
+        when(eliminarUsuarioUseCase.ejecutar(3)).thenReturn(
+                new EliminacionUsuarioResponse(3, false, "Usuario desactivado por ventas asociadas.", inactiva)
+        );
+
+        mockMvc.perform(delete("/api/v1/usuarios/2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.eliminadoFisicamente").value(true));
+
+        mockMvc.perform(delete("/api/v1/usuarios/3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.eliminadoFisicamente").value(false))
+                .andExpect(jsonPath("$.usuario.activo").value(false));
+    }
+
+    @Test
+    void deberiaRetornarForbiddenAlIntentarEliminarAdmin() throws Exception {
+        when(eliminarUsuarioUseCase.ejecutar(1))
+                .thenThrow(new OperacionNoPermitidaException("No está permitido eliminar la cuenta administradora."));
+
+        mockMvc.perform(delete("/api/v1/usuarios/1"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
+    void deberiaReactivarUsuarioEnPatch() throws Exception {
+        UsuarioResponse reactivada = new UsuarioResponse(
+                3, "trab02", "Rosa", "Díaz", "TRABAJADORA", true, LocalDateTime.now()
+        );
+        when(activarUsuarioUseCase.ejecutar(3)).thenReturn(reactivada);
+
+        mockMvc.perform(patch("/api/v1/usuarios/3/activar"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.activo").value(true));
     }
 
     @Test

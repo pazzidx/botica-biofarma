@@ -42,15 +42,26 @@ export default function AppLayout() {
             </NavLink>
 
             {isAdmin && (
-              <NavLink
-                to="/usuarios"
-                className={({ isActive }) =>
-                  `nav-item ${isActive ? 'is-active' : ''}`
-                }
-              >
-                <Users size={18} />
-                <span>Gestión de Usuarios</span>
-              </NavLink>
+              <>
+                <NavLink
+                  to="/usuarios"
+                  className={({ isActive }) =>
+                    `nav-item ${isActive ? 'is-active' : ''}`
+                  }
+                >
+                  <Users size={18} />
+                  <span>Gestión de Usuarios</span>
+                </NavLink>
+                <NavLink
+                  to="/medicamentos"
+                  className={({ isActive }) =>
+                    `nav-item ${isActive ? 'is-active' : ''}`
+                  }
+                >
+                  <Pill size={18} />
+                  <span>Catálogo de Medicamentos</span>
+                </NavLink>
+              </>
             )}
           </nav>
 

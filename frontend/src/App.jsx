@@ -5,6 +5,7 @@ import AppLayout from './components/layout/AppLayout';
 import LoginPage from './pages/auth/LoginPage';
 import InicioPage from './pages/dashboard/InicioPage';
 import UsuariosPage from './pages/auth/UsuariosPage';
+import CatalogoMedicamentosPage from './pages/inventario/CatalogoMedicamentosPage';
 import AccesoDenegadoPage from './pages/error/AccesoDenegadoPage';
 
 export default function App() {
@@ -32,6 +33,16 @@ export default function App() {
               element={
                 <ProtectedRoute allowedRoles={['ADMINISTRADORA']}>
                   <UsuariosPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Catálogo de medicamentos exclusivo para ADMINISTRADORA (HU-04) */}
+            <Route
+              path="/medicamentos"
+              element={
+                <ProtectedRoute allowedRoles={['ADMINISTRADORA']}>
+                  <CatalogoMedicamentosPage />
                 </ProtectedRoute>
               }
             />

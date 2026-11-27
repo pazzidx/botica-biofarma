@@ -4,13 +4,24 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
+  Pencil,
+  Power,
   RefreshCw,
   Search,
   ShieldCheck,
+  Trash2,
   UserPlus,
   Users,
+  X,
 } from 'lucide-react';
-import { listarUsuarios, registrarUsuario } from '../../api/usuariosApi';
+import {
+  activarUsuario,
+  actualizarUsuario,
+  eliminarUsuario,
+  listarUsuarios,
+  registrarUsuario,
+} from '../../api/usuariosApi';
+import { useAuth } from '../../context/useAuth';
 import './UsuariosPage.css';
 
 const INITIAL_FORM = {
@@ -18,34 +29,42 @@ const INITIAL_FORM = {
   nombres: '',
   apellidos: '',
   password: '',
-  rol: 'TRABAJADORA',
 };
 
 const CODIGO_REGEX = /^[A-Za-z0-9._-]+$/;
+const SOLO_LETRAS_REGEX = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
 
-function validarFormulario(form) {
+function validarCampoNombre(valor, etiqueta) {
+  const limpio = valor.trim();
+  if (!limpio) {
+    return `${etiqueta} son obligatorios.`;
+  }
+  if (limpio.length > 100) {
+    return 'Máximo 100 caracteres.';
+  }
+  if (!SOLO_LETRAS_REGEX.test(limpio)) {
+    return `${etiqueta} solo pueden contener letras, tildes, ñ y espacios (sin números ni símbolos).`;
+  }
+  return '';
+}
+
+function validarFormularioRegistro(form) {
   const errors = {};
   const codigo = form.codigoUsuario.trim();
 
   if (!codigo) {
     errors.codigoUsuario = 'El código de usuario es obligatorio.';
-  } else if (codigo.length < 3 || codigo.length > 20) {
-    errors.codigoUsuario = 'Debe tener entre 3 y 20 caracteres.';
+  } else if (codigo.length < 3 || codigo.length > 30) {
+    errors.codigoUsuario = 'Debe tener entre 3 y 30 caracteres.';
   } else if (!CODIGO_REGEX.test(codigo)) {
     errors.codigoUsuario = 'Solo letras, números, punto, guion y guion bajo.';
   }
 
-  if (!form.nombres.trim()) {
-    errors.nombres = 'Los nombres son obligatorios.';
-  } else if (form.nombres.trim().length > 100) {
-    errors.nombres = 'Máximo 100 caracteres.';
-  }
+  const errorNombres = validarCampoNombre(form.nombres, 'Los nombres');
+  if (errorNombres) errors.nombres = errorNombres;
 
-  if (!form.apellidos.trim()) {
-    errors.apellidos = 'Los apellidos son obligatorios.';
-  } else if (form.apellidos.trim().length > 100) {
-    errors.apellidos = 'Máximo 100 caracteres.';
-  }
+  const errorApellidos = validarCampoNombre(form.apellidos, 'Los apellidos');
+  if (errorApellidos) errors.apellidos = errorApellidos;
 
   if (!form.password) {
     errors.password = 'La contraseña es obligatoria.';
@@ -53,9 +72,16 @@ function validarFormulario(form) {
     errors.password = 'Debe tener entre 6 y 100 caracteres.';
   }
 
-  if (!form.rol) {
-    errors.rol = 'Seleccione un rol.';
-  }
+  return errors;
+}
+
+function validarFormularioEdicion(form) {
+  const errors = {};
+  const errorNombres = validarCampoNombre(form.nombres, 'Los nombres');
+  if (errorNombres) errors.nombres = errorNombres;
+
+  const errorApellidos = validarCampoNombre(form.apellidos, 'Los apellidos');
+  if (errorApellidos) errors.apellidos = errorApellidos;
 
   return errors;
 }
@@ -71,6 +97,8 @@ function formatearFecha(fechaIso) {
 }
 
 export default function UsuariosPage() {
+  const { usuario: usuarioSesion } = useAuth();
+
   const [form, setForm] = useState(INITIAL_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
@@ -79,6 +107,14 @@ export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
   const [busqueda, setBusqueda] = useState('');
+
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({ nombres: '', apellidos: '' });
+  const [editErrors, setEditErrors] = useState({});
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
+  const [processingActionId, setProcessingActionId] = useState(null);
 
   const [feedback, setFeedback] = useState(null);
 
@@ -124,9 +160,34 @@ export default function UsuariosPage() {
     };
   }, [fetchUsuarios]);
 
+  const esCuentaProtegida = useCallback(
+    (user) => {
+      const codigoLower = user.codigoUsuario?.toLowerCase();
+      const sesionLower = usuarioSesion?.codigoUsuario?.toLowerCase();
+      return (
+        codigoLower === 'admin' ||
+        user.rol === 'ADMINISTRADORA' ||
+        Boolean(sesionLower && codigoLower === sesionLower)
+      );
+    },
+    [usuarioSesion]
+  );
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+
+    if (name === 'nombres' || name === 'apellidos') {
+      const etiqueta = name === 'nombres' ? 'Los nombres' : 'Los apellidos';
+      if (value.trim() && !SOLO_LETRAS_REGEX.test(value.trim())) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          [name]: `${etiqueta} solo pueden contener letras, tildes, ñ y espacios (sin números ni símbolos).`,
+        }));
+        return;
+      }
+    }
+
     setFieldErrors((prev) => {
       if (!prev[name]) return prev;
       const next = { ...prev };
@@ -139,7 +200,7 @@ export default function UsuariosPage() {
     event.preventDefault();
     setFeedback(null);
 
-    const validationErrors = validarFormulario(form);
+    const validationErrors = validarFormularioRegistro(form);
     if (Object.keys(validationErrors).length > 0) {
       setFieldErrors(validationErrors);
       return;
@@ -152,7 +213,7 @@ export default function UsuariosPage() {
         nombres: form.nombres.trim(),
         apellidos: form.apellidos.trim(),
         password: form.password,
-        rol: form.rol,
+        rol: 'TRABAJADORA',
       });
 
       setForm(INITIAL_FORM);
@@ -161,7 +222,7 @@ export default function UsuariosPage() {
       setUsuarios((prev) => [creado, ...prev]);
       setFeedback({
         type: 'success',
-        message: `Usuario "${creado.codigoUsuario}" registrado con rol ${creado.rol}.`,
+        message: `Trabajadora "${creado.codigoUsuario}" registrada correctamente.`,
       });
     } catch (error) {
       if (error.fieldErrors && Object.keys(error.fieldErrors).length > 0) {
@@ -173,6 +234,125 @@ export default function UsuariosPage() {
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const abrirModalEdicion = (user) => {
+    setEditingUser(user);
+    setEditForm({ nombres: user.nombres, apellidos: user.apellidos });
+    setEditErrors({});
+  };
+
+  const cerrarModalEdicion = () => {
+    if (savingEdit) return;
+    setEditingUser(null);
+    setEditErrors({});
+  };
+
+  const handleEditChange = (event) => {
+    const { name, value } = event.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+    const etiqueta = name === 'nombres' ? 'Los nombres' : 'Los apellidos';
+    const errorMsg = validarCampoNombre(value, etiqueta);
+    setEditErrors((prev) => {
+      const next = { ...prev };
+      if (errorMsg) {
+        next[name] = errorMsg;
+      } else {
+        delete next[name];
+      }
+      return next;
+    });
+  };
+
+  const handleEditSubmit = async (event) => {
+    event.preventDefault();
+    if (!editingUser) return;
+
+    const validationErrors = validarFormularioEdicion(editForm);
+    if (Object.keys(validationErrors).length > 0) {
+      setEditErrors(validationErrors);
+      return;
+    }
+
+    setSavingEdit(true);
+    setFeedback(null);
+    try {
+      const actualizado = await actualizarUsuario(editingUser.idUsuario, {
+        nombres: editForm.nombres.trim(),
+        apellidos: editForm.apellidos.trim(),
+      });
+      setUsuarios((prev) =>
+        prev.map((u) => (u.idUsuario === actualizado.idUsuario ? actualizado : u))
+      );
+      setEditingUser(null);
+      setFeedback({
+        type: 'success',
+        message: `Datos personales de "${actualizado.codigoUsuario}" actualizados.`,
+      });
+    } catch (error) {
+      if (error.fieldErrors && Object.keys(error.fieldErrors).length > 0) {
+        setEditErrors(error.fieldErrors);
+      }
+      setFeedback({
+        type: 'error',
+        message: error.message || 'No se pudo actualizar el usuario.',
+      });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const confirmarEliminacion = async () => {
+    if (!confirmDeleteUser) return;
+    const target = confirmDeleteUser;
+
+    setProcessingActionId(target.idUsuario);
+    setFeedback(null);
+    try {
+      const resultado = await eliminarUsuario(target.idUsuario);
+      if (resultado.eliminadoFisicamente) {
+        setUsuarios((prev) => prev.filter((u) => u.idUsuario !== target.idUsuario));
+      } else if (resultado.usuario) {
+        setUsuarios((prev) =>
+          prev.map((u) => (u.idUsuario === resultado.usuario.idUsuario ? resultado.usuario : u))
+        );
+      }
+      setConfirmDeleteUser(null);
+      setFeedback({
+        type: 'success',
+        message: resultado.mensaje || `Operación realizada sobre "${target.codigoUsuario}".`,
+      });
+    } catch (error) {
+      setConfirmDeleteUser(null);
+      setFeedback({
+        type: 'error',
+        message: error.message || 'No se pudo eliminar o desactivar el usuario.',
+      });
+    } finally {
+      setProcessingActionId(null);
+    }
+  };
+
+  const handleActivar = async (user) => {
+    setProcessingActionId(user.idUsuario);
+    setFeedback(null);
+    try {
+      const reactivado = await activarUsuario(user.idUsuario);
+      setUsuarios((prev) =>
+        prev.map((u) => (u.idUsuario === reactivado.idUsuario ? reactivado : u))
+      );
+      setFeedback({
+        type: 'success',
+        message: `Cuenta "${reactivado.codigoUsuario}" reactivada correctamente.`,
+      });
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error.message || 'No se pudo reactivar el usuario.',
+      });
+    } finally {
+      setProcessingActionId(null);
     }
   };
 
@@ -248,8 +428,8 @@ export default function UsuariosPage() {
           <div className="panel-heading">
             <UserPlus size={20} aria-hidden="true" />
             <div>
-              <h2 id="titulo-registro">Nueva Cuenta de Personal</h2>
-              <p>Complete los datos para habilitar un acceso autorizado con contraseña cifrada.</p>
+              <h2 id="titulo-registro">Nueva Cuenta de Trabajadora</h2>
+              <p>Complete los datos para habilitar un acceso de mostrador con contraseña cifrada.</p>
             </div>
           </div>
 
@@ -260,7 +440,7 @@ export default function UsuariosPage() {
                 id="codigoUsuario"
                 name="codigoUsuario"
                 type="text"
-                maxLength={20}
+                maxLength={30}
                 autoComplete="off"
                 placeholder="Ej. trab.lucia"
                 value={form.codigoUsuario}
@@ -333,23 +513,16 @@ export default function UsuariosPage() {
             </div>
 
             <div className="form-field">
-              <label htmlFor="rol">Rol asignado *</label>
-              <select
-                id="rol"
-                name="rol"
-                value={form.rol}
-                onChange={handleChange}
-                aria-invalid={Boolean(fieldErrors.rol)}
-              >
-                <option value="TRABAJADORA">TRABAJADORA — Atención en mostrador y ventas</option>
-                <option value="ADMINISTRADORA">ADMINISTRADORA — Control total del establecimiento</option>
-              </select>
-              {fieldErrors.rol && <span className="field-error">{fieldErrors.rol}</span>}
+              <span className="fixed-role-label">Rol asignado</span>
+              <div className="fixed-role-badge" aria-label="Rol fijo asignado">
+                <ShieldCheck size={16} aria-hidden="true" />
+                <span>TRABAJADORA — Atención en mostrador y venta</span>
+              </div>
             </div>
 
             <button type="submit" className="primary-btn" disabled={submitting}>
               <UserPlus size={18} aria-hidden="true" />
-              {submitting ? 'Registrando cuenta...' : 'Registrar Usuario'}
+              {submitting ? 'Registrando cuenta...' : 'Registrar Trabajadora'}
             </button>
           </form>
         </section>
@@ -404,42 +577,223 @@ export default function UsuariosPage() {
                     <th>Rol</th>
                     <th>Estado</th>
                     <th>Registro</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {usuariosFiltrados.map((user) => (
-                    <tr key={user.idUsuario}>
-                      <td>
-                        <code className="code-pill">{user.codigoUsuario}</code>
-                      </td>
-                      <td>
-                        <span className="person-name">
-                          {user.nombres} {user.apellidos}
-                        </span>
-                      </td>
-                      <td>
-                        <span
-                          className={`role-badge ${
-                            user.rol === 'ADMINISTRADORA' ? 'role-admin' : 'role-worker'
-                          }`}
-                        >
-                          {user.rol}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`status-dot ${user.activo ? 'is-active' : 'is-inactive'}`}>
-                          {user.activo ? 'Activo' : 'Inactivo'}
-                        </span>
-                      </td>
-                      <td className="date-cell">{formatearFecha(user.fechaCreacion)}</td>
-                    </tr>
-                  ))}
+                  {usuariosFiltrados.map((user) => {
+                    const protegido = esCuentaProtegida(user);
+                    const ocupado = processingActionId === user.idUsuario;
+
+                    return (
+                      <tr key={user.idUsuario}>
+                        <td>
+                          <code className="code-pill">{user.codigoUsuario}</code>
+                        </td>
+                        <td>
+                          <div className="person-cell">
+                            <span className="person-name">
+                              {user.nombres} {user.apellidos}
+                            </span>
+                            {!protegido && (
+                              <button
+                                type="button"
+                                className="icon-edit-btn"
+                                onClick={() => abrirModalEdicion(user)}
+                                title={`Editar nombres y apellidos de ${user.codigoUsuario}`}
+                                aria-label={`Editar datos personales de ${user.nombres} ${user.apellidos}`}
+                              >
+                                <Pencil size={14} aria-hidden="true" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <span
+                            className={`role-badge ${
+                              user.rol === 'ADMINISTRADORA' ? 'role-admin' : 'role-worker'
+                            }`}
+                          >
+                            {user.rol}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`status-dot ${user.activo ? 'is-active' : 'is-inactive'}`}>
+                            {user.activo ? 'Activo' : 'Inactivo'}
+                          </span>
+                        </td>
+                        <td className="date-cell">{formatearFecha(user.fechaCreacion)}</td>
+                        <td className="actions-cell">
+                          {protegido ? (
+                            <span className="session-badge">Sesión actual</span>
+                          ) : user.activo ? (
+                            <button
+                              type="button"
+                              className="action-btn action-delete"
+                              onClick={() => setConfirmDeleteUser(user)}
+                              disabled={ocupado}
+                            >
+                              <Trash2 size={14} aria-hidden="true" />
+                              Eliminar
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="action-btn action-activate"
+                              onClick={() => handleActivar(user)}
+                              disabled={ocupado}
+                            >
+                              <Power size={14} aria-hidden="true" />
+                              Activar
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
           </div>
         </section>
       </main>
+
+      {editingUser && (
+        <div className="modal-backdrop" role="presentation" onClick={cerrarModalEdicion}>
+          <div
+            className="modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-edit-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div>
+                <h3 id="modal-edit-title">Editar Datos Personales</h3>
+                <p>
+                  Cuenta: <code className="code-pill">{editingUser.codigoUsuario}</code>
+                </p>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={cerrarModalEdicion}
+                aria-label="Cerrar modal de edición"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form className="usuario-form" onSubmit={handleEditSubmit} noValidate>
+              <div className="form-field">
+                <label htmlFor="edit-nombres">Nombres *</label>
+                <input
+                  id="edit-nombres"
+                  name="nombres"
+                  type="text"
+                  maxLength={100}
+                  value={editForm.nombres}
+                  onChange={handleEditChange}
+                  aria-invalid={Boolean(editErrors.nombres)}
+                />
+                {editErrors.nombres && <span className="field-error">{editErrors.nombres}</span>}
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="edit-apellidos">Apellidos *</label>
+                <input
+                  id="edit-apellidos"
+                  name="apellidos"
+                  type="text"
+                  maxLength={100}
+                  value={editForm.apellidos}
+                  onChange={handleEditChange}
+                  aria-invalid={Boolean(editErrors.apellidos)}
+                />
+                {editErrors.apellidos && (
+                  <span className="field-error">{editErrors.apellidos}</span>
+                )}
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={cerrarModalEdicion}
+                  disabled={savingEdit}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="primary-btn" disabled={savingEdit}>
+                  {savingEdit ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteUser && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onClick={() => !processingActionId && setConfirmDeleteUser(null)}
+        >
+          <div
+            className="modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-delete-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div>
+                <h3 id="modal-delete-title">Confirmar eliminación</h3>
+                <p>
+                  Trabajadora: <code className="code-pill">{confirmDeleteUser.codigoUsuario}</code>
+                </p>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => !processingActionId && setConfirmDeleteUser(null)}
+                aria-label="Cerrar confirmación"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="confirm-copy">
+              ¿Desea eliminar a{' '}
+              <strong>
+                {confirmDeleteUser.nombres} {confirmDeleteUser.apellidos}
+              </strong>
+              ? Si no tiene ventas registradas será eliminada definitivamente; si posee ventas,
+              pasará a estado <strong>Inactivo</strong> para preservar los reportes históricos.
+            </p>
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => setConfirmDeleteUser(null)}
+                disabled={Boolean(processingActionId)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="action-btn action-delete action-btn-lg"
+                onClick={confirmarEliminacion}
+                disabled={Boolean(processingActionId)}
+              >
+                <Trash2 size={16} aria-hidden="true" />
+                {processingActionId ? 'Procesando...' : 'Sí, eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import com.biofarma.inventario.application.dto.RegistrarUsuarioRequest;
 import com.biofarma.inventario.application.dto.UsuarioResponse;
 import com.biofarma.inventario.application.mapper.UsuarioMapper;
 import com.biofarma.inventario.domain.exception.CodigoUsuarioDuplicadoException;
+import com.biofarma.inventario.domain.exception.DatosUsuarioInvalidosException;
 import com.biofarma.inventario.domain.exception.RolNoEncontradoException;
 import com.biofarma.inventario.domain.model.Rol;
 import com.biofarma.inventario.domain.model.RolNombre;
@@ -15,7 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Caso de uso para el registro seguro de usuarios con rol asignado y cifrado BCrypt (HU-01).
+ * Caso de uso para el registro seguro de trabajadoras con cifrado BCrypt (HU-01).
+ * Fuerza el rol único TRABAJADORA e impide registrar cuentas ADMINISTRADORA adicionales.
  */
 @Service
 public class RegistrarUsuarioUseCase {
@@ -41,14 +43,22 @@ public class RegistrarUsuarioUseCase {
     public UsuarioResponse ejecutar(RegistrarUsuarioRequest request) {
         String codigoNormalizado = request.codigoUsuario().trim();
         Usuario.validarPasswordPlano(request.password());
-        RolNombre rolNombre = RolNombre.fromString(request.rol());
+
+        if (request.rol() != null && !request.rol().isBlank()) {
+            RolNombre rolSolicitado = RolNombre.fromString(request.rol());
+            if (rolSolicitado != RolNombre.TRABAJADORA) {
+                throw new DatosUsuarioInvalidosException(
+                        "Solo se permite registrar cuentas con rol TRABAJADORA. El sistema mantiene una única cuenta ADMINISTRADORA."
+                );
+            }
+        }
 
         if (usuarioRepository.existsByCodigoUsuario(codigoNormalizado)) {
             throw new CodigoUsuarioDuplicadoException(codigoNormalizado);
         }
 
-        Rol rol = rolRepository.findByNombre(rolNombre)
-                .orElseThrow(() -> new RolNoEncontradoException(rolNombre.name()));
+        Rol rolTrabajadora = rolRepository.findByNombre(RolNombre.TRABAJADORA)
+                .orElseThrow(() -> new RolNoEncontradoException(RolNombre.TRABAJADORA.name()));
 
         String passwordHash = passwordHasher.hash(request.password());
         Usuario nuevoUsuario = Usuario.crearNuevo(
@@ -56,7 +66,7 @@ public class RegistrarUsuarioUseCase {
                 request.nombres(),
                 request.apellidos(),
                 passwordHash,
-                rol
+                rolTrabajadora
         );
 
         Usuario guardado = usuarioRepository.save(nuevoUsuario);

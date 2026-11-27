@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  * Entidad JPA mapeada exactamente a la tabla Usuarios de SQL Server.
  */
 @Entity
-@Table(name = "Usuarios")
+@Table(name = "usuarios")
 public class UsuarioEntity {
 
     @Id
@@ -23,7 +23,7 @@ public class UsuarioEntity {
     @Column(name = "id_usuario")
     private Integer idUsuario;
 
-    @Column(name = "codigo_usuario", nullable = false, unique = true, length = 20)
+    @Column(name = "codigo_usuario", nullable = false, unique = true, length = 30)
     private String codigoUsuario;
 
     @Column(name = "nombres", nullable = false, length = 100)
@@ -42,7 +42,7 @@ public class UsuarioEntity {
     @Column(name = "activo", nullable = false)
     private boolean activo;
 
-    @Column(name = "fecha_creacion", nullable = false)
+    @Column(name = "fecha_registro", nullable = false)
     private LocalDateTime fechaCreacion;
 
     public UsuarioEntity() {

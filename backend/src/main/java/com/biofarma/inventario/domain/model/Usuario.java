@@ -255,6 +255,16 @@ public class Usuario {
         return activo;
     }
 
+    /**
+     * Determina si la cuenta de usuario se encuentra en condiciones válidas para autenticarse.
+     * Una cuenta inactiva o sin un hash de contraseña configurado no puede autenticarse.
+     *
+     * @return true si la cuenta está activa y posee un hash de contraseña no vacío
+     */
+    public boolean puedeAutenticarse() {
+        return this.activo && this.passwordHash != null && !this.passwordHash.isBlank();
+    }
+
     public LocalDateTime getFechaCreacion() {
         return fechaCreacion;
     }

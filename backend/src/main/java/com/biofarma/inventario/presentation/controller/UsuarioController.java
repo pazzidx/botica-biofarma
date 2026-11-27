@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -24,11 +25,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Controlador REST delgado para gestión y registro de usuarios (HU-01).
- * El control por rol (@PreAuthorize("hasRole('ADMINISTRADORA')")) se activará al integrar JWT en HU-02.
+ * Controlador REST delgado para gestión y registro de usuarios (HU-01 / HU-02).
+ * El acceso a todos sus endpoints está restringido exclusivamente al rol ADMINISTRADORA (BIO-31).
  */
 @RestController
 @RequestMapping("/api/v1/usuarios")
+@PreAuthorize("hasRole('ADMINISTRADORA')")
 public class UsuarioController {
 
     private final RegistrarUsuarioUseCase registrarUsuarioUseCase;

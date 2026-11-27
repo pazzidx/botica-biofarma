@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- BASE DE DATOS COMPLETA: DB_BoticaBiofarma (SQL Server)
 -- Cubre HU-01 hasta HU-12 | Listo para ejecución idempotente (IF NOT EXISTS)
 -- ============================================================================
@@ -13,9 +13,9 @@ USE DB_BoticaBiofarma;
 GO
 
 -- 1. ROLES (HU-01, HU-02)
-IF OBJECT_ID(N'dbo.roles', N'U') IS NULL
+IF OBJECT_ID(N'dbo.Roles', N'U') IS NULL
 BEGIN
-CREATE TABLE dbo.roles (
+CREATE TABLE dbo.Roles (
                            id_rol INT IDENTITY(1,1) PRIMARY KEY,
                            nombre VARCHAR(30) NOT NULL UNIQUE -- 'ADMINISTRADORA', 'TRABAJADORA'
 );
@@ -23,9 +23,9 @@ END
 GO
 
 -- 2. USUARIOS (HU-01, HU-02, HU-03, HU-11)
-IF OBJECT_ID(N'dbo.usuarios', N'U') IS NULL
+IF OBJECT_ID(N'dbo.Usuarios', N'U') IS NULL
 BEGIN
-CREATE TABLE dbo.usuarios (
+CREATE TABLE dbo.Usuarios (
                               id_usuario INT IDENTITY(1,1) PRIMARY KEY,
                               codigo_usuario VARCHAR(30) NOT NULL UNIQUE,
                               nombres VARCHAR(100) NOT NULL,
@@ -33,8 +33,8 @@ CREATE TABLE dbo.usuarios (
                               password_hash VARCHAR(255) NOT NULL,
                               id_rol INT NOT NULL,
                               activo BIT NOT NULL DEFAULT 1,
-                              fecha_registro DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
-                              CONSTRAINT fk_usuarios_rol FOREIGN KEY (id_rol) REFERENCES dbo.roles(id_rol)
+                              fecha_creacion DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+                              CONSTRAINT fk_usuarios_rol FOREIGN KEY (id_rol) REFERENCES dbo.Roles(id_rol)
 );
 END
 GO
@@ -130,18 +130,18 @@ GO
 -- ============================================================================
 -- DATOS SEMILLA INICIALES (Roles + Única Administradora)
 -- ============================================================================
-IF NOT EXISTS (SELECT 1 FROM dbo.roles WHERE nombre = 'ADMINISTRADORA')
-    INSERT INTO dbo.roles (nombre) VALUES ('ADMINISTRADORA');
+IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE nombre = 'ADMINISTRADORA')
+    INSERT INTO dbo.Roles (nombre) VALUES ('ADMINISTRADORA');
 
-IF NOT EXISTS (SELECT 1 FROM dbo.roles WHERE nombre = 'TRABAJADORA')
-    INSERT INTO dbo.roles (nombre) VALUES ('TRABAJADORA');
+IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE nombre = 'TRABAJADORA')
+    INSERT INTO dbo.Roles (nombre) VALUES ('TRABAJADORA');
 GO
 
 -- Cuenta única ADMINISTRADORA (clave: admin123 cifrada con BCrypt)
-IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE codigo_usuario = 'admin')
+IF NOT EXISTS (SELECT 1 FROM dbo.Usuarios WHERE codigo_usuario = 'admin')
 BEGIN
-    DECLARE @idRolAdmin INT = (SELECT id_rol FROM dbo.roles WHERE nombre = 'ADMINISTRADORA');
-INSERT INTO dbo.usuarios (codigo_usuario, nombres, apellidos, password_hash, id_rol, activo)
+    DECLARE @idRolAdmin INT = (SELECT id_rol FROM dbo.Roles WHERE nombre = 'ADMINISTRADORA');
+INSERT INTO dbo.Usuarios (codigo_usuario, nombres, apellidos, password_hash, id_rol, activo)
 VALUES (
            'admin',
            'Propietaria',

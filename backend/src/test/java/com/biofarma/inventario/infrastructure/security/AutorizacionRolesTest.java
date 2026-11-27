@@ -7,6 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.biofarma.inventario.application.dto.RegistrarUsuarioRequest;
+import com.biofarma.inventario.application.usecase.ActivarUsuarioUseCase;
+import com.biofarma.inventario.application.usecase.ActualizarUsuarioUseCase;
+import com.biofarma.inventario.application.usecase.EliminarUsuarioUseCase;
 import com.biofarma.inventario.application.usecase.ListarUsuariosUseCase;
 import com.biofarma.inventario.application.usecase.RegistrarUsuarioUseCase;
 import com.biofarma.inventario.domain.model.Rol;
@@ -48,6 +51,15 @@ class AutorizacionRolesTest {
 
     @MockitoBean
     private ListarUsuariosUseCase listarUsuariosUseCase;
+
+    @MockitoBean
+    private ActualizarUsuarioUseCase actualizarUsuarioUseCase;
+
+    @MockitoBean
+    private EliminarUsuarioUseCase eliminarUsuarioUseCase;
+
+    @MockitoBean
+    private ActivarUsuarioUseCase activarUsuarioUseCase;
 
     private final Rol rolAdmin = new Rol(1, RolNombre.ADMINISTRADORA);
     private final Rol rolTrabajadora = new Rol(2, RolNombre.TRABAJADORA);

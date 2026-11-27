@@ -1,4 +1,4 @@
-﻿# Java / Maven / IntelliJ
+# Java / Maven / IntelliJ
 backend/target/
 backend/.mvn/
 .idea/
@@ -10,6 +10,15 @@ backend/.mvn/
 frontend/node_modules/
 frontend/dist/
 frontend/.env
+*.local
+
+# Archivos fisicos y respaldos de SQL Server
+*.mdf
+*.ldf
+*.bak
+
+# Logs y temporales
+*.log
 
 # Sistema / VS Code
 .vscode/

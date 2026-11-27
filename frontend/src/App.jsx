@@ -37,7 +37,7 @@ export default function App() {
               }
             />
 
-            {/* Catálogo de medicamentos exclusivo para ADMINISTRADORA */}
+            {/* Catálogo de medicamentos exclusivo para ADMINISTRADORA (HU-04) */}
             <Route
               path="/medicamentos"
               element={

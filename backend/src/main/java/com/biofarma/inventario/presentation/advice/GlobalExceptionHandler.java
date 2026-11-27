@@ -28,9 +28,14 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 /**
  * Manejador global de excepciones REST que traduce errores de dominio, validación y seguridad
  * a respuestas HTTP estandarizadas en español (ApiErrorResponse).
+ * Cubre HU-01 / HU-02 (autenticación y autorización) y HU-04 (catálogo de medicamentos).
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    // -------------------------------------------------------------------------
+    // Validación de entrada
+    // -------------------------------------------------------------------------
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(
@@ -41,7 +46,6 @@ public class GlobalExceptionHandler {
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
             fieldErrors.putIfAbsent(error.getField(), error.getDefaultMessage());
         }
-
         return buildResponse(
                 HttpStatus.BAD_REQUEST,
                 "Datos inválidos",
@@ -65,19 +69,9 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(DatosUsuarioInvalidosException.class)
-    public ResponseEntity<ApiErrorResponse> handleInvalidUserData(
-            DatosUsuarioInvalidosException ex,
-            HttpServletRequest request
-    ) {
-        return buildResponse(
-                HttpStatus.BAD_REQUEST,
-                "Validación de negocio",
-                ex.getMessage(),
-                request.getRequestURI(),
-                Map.of()
-        );
-    }
+    // -------------------------------------------------------------------------
+    // HU-01 / HU-02 — Usuarios y seguridad
+    // -------------------------------------------------------------------------
 
     @ExceptionHandler(CredencialesInvalidasException.class)
     public ResponseEntity<ApiErrorResponse> handleInvalidCredentials(
@@ -121,8 +115,22 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(DatosUsuarioInvalidosException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidUserData(
+            DatosUsuarioInvalidosException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Validación de negocio",
+                ex.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
+
     @ExceptionHandler(CodigoUsuarioDuplicadoException.class)
-    public ResponseEntity<ApiErrorResponse> handleDuplicateCode(
+    public ResponseEntity<ApiErrorResponse> handleDuplicateUserCode(
             CodigoUsuarioDuplicadoException ex,
             HttpServletRequest request
     ) {
@@ -148,6 +156,38 @@ public class GlobalExceptionHandler {
                 Map.of()
         );
     }
+
+    @ExceptionHandler(UsuarioNoEncontradoException.class)
+    public ResponseEntity<ApiErrorResponse> handleUserNotFound(
+            UsuarioNoEncontradoException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                "Usuario no encontrado",
+                ex.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(OperacionNoPermitidaException.class)
+    public ResponseEntity<ApiErrorResponse> handleOperationNotAllowed(
+            OperacionNoPermitidaException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.FORBIDDEN,
+                "Operación no permitida",
+                ex.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // HU-04 — Catálogo de Medicamentos
+    // -------------------------------------------------------------------------
 
     @ExceptionHandler(DatosMedicamentoInvalidosException.class)
     public ResponseEntity<ApiErrorResponse> handleInvalidMedicamentoData(
@@ -191,33 +231,9 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(UsuarioNoEncontradoException.class)
-    public ResponseEntity<ApiErrorResponse> handleUserNotFound(
-            UsuarioNoEncontradoException ex,
-            HttpServletRequest request
-    ) {
-        return buildResponse(
-                HttpStatus.NOT_FOUND,
-                "Usuario no encontrado",
-                ex.getMessage(),
-                request.getRequestURI(),
-                Map.of()
-        );
-    }
-
-    @ExceptionHandler(OperacionNoPermitidaException.class)
-    public ResponseEntity<ApiErrorResponse> handleOperationNotAllowed(
-            OperacionNoPermitidaException ex,
-            HttpServletRequest request
-    ) {
-        return buildResponse(
-                HttpStatus.FORBIDDEN,
-                "Operación no permitida",
-                ex.getMessage(),
-                request.getRequestURI(),
-                Map.of()
-        );
-    }
+    // -------------------------------------------------------------------------
+    // Infraestructura y catch-all
+    // -------------------------------------------------------------------------
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleDataIntegrity(
@@ -260,6 +276,10 @@ public class GlobalExceptionHandler {
                 Map.of()
         );
     }
+
+    // -------------------------------------------------------------------------
+    // Helper
+    // -------------------------------------------------------------------------
 
     private ResponseEntity<ApiErrorResponse> buildResponse(
             HttpStatus status,

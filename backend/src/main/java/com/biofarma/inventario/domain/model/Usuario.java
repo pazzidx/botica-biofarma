@@ -1,6 +1,7 @@
 package com.biofarma.inventario.domain.model;
 
 import com.biofarma.inventario.domain.exception.DatosUsuarioInvalidosException;
+import com.biofarma.inventario.domain.exception.OperacionNoPermitidaException;
 import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -10,12 +11,13 @@ import java.util.regex.Pattern;
  */
 public class Usuario {
 
-    private static final int MAX_CODIGO_LENGTH = 20;
+    private static final int MAX_CODIGO_LENGTH = 30;
     private static final int MIN_CODIGO_LENGTH = 3;
     private static final int MAX_NOMBRE_LENGTH = 100;
     private static final int MIN_PASSWORD_LENGTH = 6;
     private static final int MAX_PASSWORD_LENGTH = 100;
     private static final Pattern CODIGO_PATTERN = Pattern.compile("^[A-Za-z0-9._-]+$");
+    private static final Pattern SOLO_LETRAS_PATTERN = Pattern.compile("^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$");
 
     private final Integer idUsuario;
     private final String codigoUsuario;
@@ -73,8 +75,8 @@ public class Usuario {
             Rol rol
     ) {
         String codigoNormalizado = validarCodigoUsuario(codigoUsuario);
-        String nombresNormalizados = validarTextoObligatorio(nombres, "Los nombres", MAX_NOMBRE_LENGTH);
-        String apellidosNormalizados = validarTextoObligatorio(apellidos, "Los apellidos", MAX_NOMBRE_LENGTH);
+        String nombresNormalizados = validarSoloLetras(nombres, "Los nombres");
+        String apellidosNormalizados = validarSoloLetras(apellidos, "Los apellidos");
 
         if (passwordHash == null || passwordHash.isBlank()) {
             throw new DatosUsuarioInvalidosException("El hash de contraseña no puede estar vacío.");
@@ -120,6 +122,75 @@ public class Usuario {
         );
     }
 
+    /**
+     * Indica si la cuenta está protegida frente a edición/eliminación por ser la única administradora.
+     */
+    public boolean esProtegido() {
+        return "admin".equalsIgnoreCase(this.codigoUsuario)
+                || (this.rol != null && this.rol.getNombre() == RolNombre.ADMINISTRADORA);
+    }
+
+    /**
+     * Actualiza únicamente nombres y apellidos de una trabajadora manteniendo inalterables código, rol y estado.
+     */
+    public Usuario actualizarDatosPersonales(String nuevosNombres, String nuevosApellidos) {
+        if (esProtegido()) {
+            throw new OperacionNoPermitidaException(
+                    "No está permitido modificar la cuenta administradora principal."
+            );
+        }
+        String nombresValidados = validarSoloLetras(nuevosNombres, "Los nombres");
+        String apellidosValidados = validarSoloLetras(nuevosApellidos, "Los apellidos");
+
+        return new Usuario(
+                this.idUsuario,
+                this.codigoUsuario,
+                nombresValidados,
+                apellidosValidados,
+                this.passwordHash,
+                this.rol,
+                this.activo,
+                this.fechaCreacion
+        );
+    }
+
+    /**
+     * Aplica baja lógica al usuario (estado inactivo).
+     */
+    public Usuario desactivar() {
+        if (esProtegido()) {
+            throw new OperacionNoPermitidaException(
+                    "No está permitido desactivar o eliminar la cuenta administradora principal."
+            );
+        }
+        return new Usuario(
+                this.idUsuario,
+                this.codigoUsuario,
+                this.nombres,
+                this.apellidos,
+                this.passwordHash,
+                this.rol,
+                false,
+                this.fechaCreacion
+        );
+    }
+
+    /**
+     * Reactiva una cuenta inactiva.
+     */
+    public Usuario activar() {
+        return new Usuario(
+                this.idUsuario,
+                this.codigoUsuario,
+                this.nombres,
+                this.apellidos,
+                this.passwordHash,
+                this.rol,
+                true,
+                this.fechaCreacion
+        );
+    }
+
     private static String validarCodigoUsuario(String codigo) {
         if (codigo == null || codigo.isBlank()) {
             throw new DatosUsuarioInvalidosException("El código de usuario es obligatorio.");
@@ -138,14 +209,19 @@ public class Usuario {
         return normalizado;
     }
 
-    private static String validarTextoObligatorio(String valor, String campo, int maxLength) {
+    private static String validarSoloLetras(String valor, String campo) {
         if (valor == null || valor.isBlank()) {
             throw new DatosUsuarioInvalidosException(campo + " son obligatorios.");
         }
         String normalizado = valor.trim();
-        if (normalizado.length() > maxLength) {
+        if (normalizado.length() > MAX_NOMBRE_LENGTH) {
             throw new DatosUsuarioInvalidosException(
-                    campo + " no pueden superar los " + maxLength + " caracteres."
+                    campo + " no pueden superar los " + MAX_NOMBRE_LENGTH + " caracteres."
+            );
+        }
+        if (!SOLO_LETRAS_PATTERN.matcher(normalizado).matches()) {
+            throw new DatosUsuarioInvalidosException(
+                    campo + " solo pueden contener letras, tildes, ñ y espacios."
             );
         }
         return normalizado;
@@ -177,6 +253,16 @@ public class Usuario {
 
     public boolean isActivo() {
         return activo;
+    }
+
+    /**
+     * Determina si la cuenta de usuario se encuentra en condiciones válidas para autenticarse.
+     * Una cuenta inactiva o sin un hash de contraseña configurado no puede autenticarse.
+     *
+     * @return true si la cuenta está activa y posee un hash de contraseña no vacío
+     */
+    public boolean puedeAutenticarse() {
+        return this.activo && this.passwordHash != null && !this.passwordHash.isBlank();
     }
 
     public LocalDateTime getFechaCreacion() {

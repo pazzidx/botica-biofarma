@@ -1,59 +1,125 @@
 package com.biofarma.inventario.infrastructure.security;
 
+import com.biofarma.inventario.application.service.TokenProvider;
+import com.biofarma.inventario.domain.model.Usuario;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import javax.crypto.SecretKey;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
 
 /**
- * Servicio técnico para generación y validación de tokens JWT (HU-02 / HU-03).
+ * Componente de infraestructura para la generación, firma y validación de tokens JWT
+ * utilizando JJWT y clave segura HMAC-SHA256 (HU-02 / HU-03).
  */
-@Service
-public class JwtService {
+public class JwtService implements TokenProvider {
 
-    private final SecretKey secretKey;
+    private final String secretKeyString;
     private final long expirationMs;
 
     public JwtService(
-            @Value("${jwt.secret}") String secret,
-            @Value("${jwt.expiration}") long expirationMs
+            String secretKeyString,
+            long expirationMs
     ) {
-        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        if (secretKeyString == null || secretKeyString.isBlank() || secretKeyString.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalArgumentException(
+                    "La clave secreta JWT (JWT_SECRET) es obligatoria y debe tener al menos 32 caracteres (256 bits)."
+            );
+        }
+        this.secretKeyString = secretKeyString;
         this.expirationMs = expirationMs;
     }
 
-    public String generarToken(Integer idUsuario, String codigoUsuario, String rol) {
-        Date ahora = new Date();
-        Date expiracion = new Date(ahora.getTime() + expirationMs);
+    private SecretKey getSigningKey() {
+        byte[] keyBytes = secretKeyString.getBytes(StandardCharsets.UTF_8);
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    @Override
+    public String generarToken(Usuario usuario) {
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("idUsuario", usuario.getIdUsuario());
+        extraClaims.put("codigoUsuario", usuario.getCodigoUsuario());
+        extraClaims.put("nombres", usuario.getNombres());
+        extraClaims.put("apellidos", usuario.getApellidos());
+        extraClaims.put("rol", usuario.getRol().getNombre().name());
 
         return Jwts.builder()
-                .subject(codigoUsuario)
-                .claim("idUsuario", idUsuario)
-                .claim("rol", rol)
-                .issuedAt(ahora)
-                .expiration(expiracion)
-                .signWith(secretKey)
+                .claims(extraClaims)
+                .subject(usuario.getCodigoUsuario())
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + expirationMs))
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
                 .compact();
     }
 
-    public Claims extraerClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+    public String generarToken(Integer idUsuario, String codigoUsuario, String rol) {
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("idUsuario", idUsuario);
+        extraClaims.put("codigoUsuario", codigoUsuario);
+        extraClaims.put("rol", rol);
+
+        return Jwts.builder()
+                .claims(extraClaims)
+                .subject(codigoUsuario)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + expirationMs))
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
+                .compact();
+    }
+
+    @Override
+    public long getExpiracionMs() {
+        return expirationMs;
+    }
+
+    public String extraerCodigoUsuario(String token) {
+        return extraerClaims(token).getSubject();
+    }
+
+    public String extraerRol(String token) {
+        Claims claims = extraerClaims(token);
+        return claims.get("rol", String.class);
+    }
+
+    public Date extraerFechaExpiracion(String token) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("El token no puede ser nulo ni vacío.");
+        }
+        return extraerClaims(token).getExpiration();
     }
 
     public boolean esTokenValido(String token) {
         try {
             Claims claims = extraerClaims(token);
-            return claims.getExpiration() != null && claims.getExpiration().after(new Date());
-        } catch (Exception ex) {
+            Date expiration = claims.getExpiration();
+            return expiration != null && expiration.after(new Date());
+        } catch (JwtException | IllegalArgumentException ex) {
             return false;
         }
+    }
+
+    public boolean esTokenValido(String token, String codigoUsuarioEsperado) {
+        try {
+            Claims claims = extraerClaims(token);
+            String codigoUsuario = claims.getSubject();
+            Date expiration = claims.getExpiration();
+            boolean noExpirado = expiration != null && expiration.after(new Date());
+            return noExpirado && codigoUsuario != null && codigoUsuario.equalsIgnoreCase(codigoUsuarioEsperado);
+        } catch (JwtException | IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    public Claims extraerClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }

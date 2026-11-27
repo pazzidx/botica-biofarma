@@ -1,6 +1,5 @@
 package com.biofarma.inventario.integration;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -9,13 +8,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.biofarma.inventario.infrastructure.persistence.entity.RolEntity;
+import com.biofarma.inventario.infrastructure.persistence.entity.UsuarioEntity;
+import com.biofarma.inventario.infrastructure.persistence.repository.SpringDataRolRepository;
+import com.biofarma.inventario.infrastructure.persistence.repository.SpringDataUsuarioRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -29,6 +34,15 @@ class GestionUsuariosIntegrationTest {
     @Autowired
     private WebApplicationContext context;
 
+    @Autowired
+    private SpringDataRolRepository springDataRolRepository;
+
+    @Autowired
+    private SpringDataUsuarioRepository springDataUsuarioRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private MockMvc mockMvc;
@@ -39,6 +53,25 @@ class GestionUsuariosIntegrationTest {
                 .webAppContextSetup(context)
                 .apply(springSecurity())
                 .build();
+
+        if (springDataRolRepository.findByNombre("ADMINISTRADORA").isEmpty()) {
+            springDataRolRepository.saveAndFlush(new RolEntity(null, "ADMINISTRADORA"));
+        }
+        if (springDataRolRepository.findByNombre("TRABAJADORA").isEmpty()) {
+            springDataRolRepository.saveAndFlush(new RolEntity(null, "TRABAJADORA"));
+        }
+        if (springDataUsuarioRepository.findByCodigoUsuarioIgnoreCase("admin.integracion").isEmpty()) {
+            RolEntity rolAdmin = springDataRolRepository.findByNombre("ADMINISTRADORA").orElseThrow();
+            UsuarioEntity admin = new UsuarioEntity();
+            admin.setCodigoUsuario("admin.integracion");
+            admin.setNombres("Ana");
+            admin.setApellidos("Torres");
+            admin.setPasswordHash(passwordEncoder.encode("AdminClave123"));
+            admin.setRol(rolAdmin);
+            admin.setActivo(true);
+            admin.setFechaCreacion(LocalDateTime.now());
+            springDataUsuarioRepository.saveAndFlush(admin);
+        }
     }
 
     private String obtenerTokenJwt(String codigoUsuario, String password) throws Exception {
@@ -61,24 +94,9 @@ class GestionUsuariosIntegrationTest {
 
     @Test
     void flujoCompleto_loginRealRolesYGestionDeUsuarios() throws Exception {
-        // 1. Creamos una administradora de prueba (se revertirá con @Transactional) y hacemos login real
-        mockMvc.perform(post("/api/v1/usuarios")
-                        .with(user("setupAdmin").roles("ADMINISTRADORA"))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "codigoUsuario": "admin.integracion",
-                                  "nombres": "Ana",
-                                  "apellidos": "Torres",
-                                  "password": "AdminClave123",
-                                  "rol": "ADMINISTRADORA"
-                                }
-                                """))
-                .andExpect(status().isCreated());
-
         String tokenAdmin = obtenerTokenJwt("admin.integracion", "AdminClave123");
 
-        // 2. ADMINISTRADORA registra una trabajadora nueva en SQL Server
+        // 1. ADMINISTRADORA registra una trabajadora nueva
         MvcResult creadoResult = mockMvc.perform(post("/api/v1/usuarios")
                         .header("Authorization", "Bearer " + tokenAdmin)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -98,38 +116,18 @@ class GestionUsuariosIntegrationTest {
         int idCreado = objectMapper.readTree(creadoResult.getResponse().getContentAsString())
                 .get("idUsuario").asInt();
 
-        // 3. La nueva TRABAJADORA inicia sesión y recibe su propio JWT real
+        // 2. La nueva TRABAJADORA inicia sesión y recibe su propio JWT real
         String tokenTrabNueva = obtenerTokenJwt("trab.integracion", "clave123");
 
-        // 4. TRABAJADORA intenta entrar al panel de usuarios -> Bloqueada con 403
+        // 3. TRABAJADORA intenta entrar al panel de usuarios -> Bloqueada con 403
         mockMvc.perform(get("/api/v1/usuarios")
                         .header("Authorization", "Bearer " + tokenTrabNueva))
                 .andExpect(status().isForbidden());
 
-        // 5. ADMINISTRADORA desactiva a la trabajadora -> Ya no puede iniciar sesión
-        mockMvc.perform(patch("/api/v1/usuarios/" + idCreado + "/estado")
-                        .header("Authorization", "Bearer " + tokenAdmin))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.activo").value(false));
-
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "codigoUsuario": "trab.integracion",
-                                  "password": "clave123"
-                                }
-                                """))
-                .andExpect(status().is4xxClientError());
-
-        // 6. ADMINISTRADORA la reactiva y luego la elimina físicamente
-        mockMvc.perform(patch("/api/v1/usuarios/" + idCreado + "/estado")
-                        .header("Authorization", "Bearer " + tokenAdmin))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.activo").value(true));
-
+        // 4. ADMINISTRADORA elimina físicamente a la trabajadora (0 ventas asociadas)
         mockMvc.perform(delete("/api/v1/usuarios/" + idCreado)
                         .header("Authorization", "Bearer " + tokenAdmin))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.eliminadoFisicamente").value(true));
     }
 }

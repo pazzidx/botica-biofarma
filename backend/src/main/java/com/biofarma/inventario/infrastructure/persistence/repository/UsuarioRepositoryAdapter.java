@@ -66,6 +66,11 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
     }
 
     @Override
+    public long countVentasByUsuarioId(Integer idUsuario) {
+        return jpaUsuarioRepository.countVentasByUsuarioId(idUsuario);
+    }
+
+    @Override
     public void deleteById(Integer idUsuario) {
         jpaUsuarioRepository.deleteById(idUsuario);
     }

@@ -1,11 +1,16 @@
 package com.biofarma.inventario.domain.exception;
 
 /**
- * Excepción de dominio lanzada cuando las credenciales de inicio de sesión son inválidas o el usuario está inactivo.
+ * Excepción de negocio lanzada cuando las credenciales de acceso son incorrectas
+ * o la cuenta de usuario se encuentra inactiva.
  */
 public class CredencialesInvalidasException extends RuntimeException {
 
     public CredencialesInvalidasException() {
-        super("Usuario o contraseña incorrectos.");
+        super("Credenciales inválidas.");
+    }
+
+    public CredencialesInvalidasException(String message) {
+        super(message);
     }
 }

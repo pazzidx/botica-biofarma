@@ -1,52 +1,69 @@
 package com.biofarma.inventario.application.usecase;
 
+import com.biofarma.inventario.application.dto.EliminacionUsuarioResponse;
+import com.biofarma.inventario.application.mapper.UsuarioMapper;
+import com.biofarma.inventario.domain.exception.OperacionNoPermitidaException;
+import com.biofarma.inventario.domain.exception.UsuarioNoEncontradoException;
 import com.biofarma.inventario.domain.model.Usuario;
 import com.biofarma.inventario.domain.repository.UsuarioRepository;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Caso de uso para eliminar o desactivar cuentas de usuario (solo ADMINISTRADORA).
+ * Caso de uso de eliminación inteligente de usuarios (HU-01):
+ * borrado físico si no tiene ventas asociadas; desactivación lógica si tiene ventas registradas.
  */
 @Service
 public class EliminarUsuarioUseCase {
 
     private final UsuarioRepository usuarioRepository;
+    private final UsuarioMapper usuarioMapper;
 
-    public EliminarUsuarioUseCase(UsuarioRepository usuarioRepository) {
+    public EliminarUsuarioUseCase(UsuarioRepository usuarioRepository, UsuarioMapper usuarioMapper) {
         this.usuarioRepository = usuarioRepository;
+        this.usuarioMapper = usuarioMapper;
     }
 
-    public void ejecutar(Integer idUsuario, String codigoUsuarioAutenticado) {
+    @Transactional
+    public EliminacionUsuarioResponse ejecutar(Integer idUsuario) {
         Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "El usuario solicitado no existe."
-                ));
+                .orElseThrow(() -> new UsuarioNoEncontradoException(idUsuario));
 
-        if (codigoUsuarioAutenticado != null
-                && usuario.getCodigoUsuario().equalsIgnoreCase(codigoUsuarioAutenticado)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "No puede eliminar su propia cuenta de administradora."
+        if (usuario.esProtegido() || esSesionActual(usuario)) {
+            throw new OperacionNoPermitidaException(
+                    "No está permitido eliminar o desactivar la cuenta administradora ni la sesión actual."
             );
         }
 
-        try {
+        long ventasAsociadas = usuarioRepository.countVentasByUsuarioId(idUsuario);
+        if (ventasAsociadas == 0) {
             usuarioRepository.deleteById(idUsuario);
-        } catch (DataIntegrityViolationException ex) {
-            // Si el usuario tiene ventas asociadas en la BD, se desactiva para mantener integridad referencial
-            Usuario usuarioDesactivado = Usuario.reconstruir(
-                    usuario.getIdUsuario(),
-                    usuario.getCodigoUsuario(),
-                    usuario.getNombres(),
-                    usuario.getApellidos(),
-                    usuario.getPasswordHash(),
-                    usuario.getRol(),
-                    false,
-                    usuario.getFechaCreacion()
+            return new EliminacionUsuarioResponse(
+                    idUsuario,
+                    true,
+                    "Usuario '" + usuario.getCodigoUsuario() + "' eliminado definitivamente (0 ventas asociadas).",
+                    null
             );
-            usuarioRepository.save(usuarioDesactivado);
         }
+
+        Usuario desactivado = usuarioRepository.save(usuario.desactivar());
+        return new EliminacionUsuarioResponse(
+                idUsuario,
+                false,
+                "Usuario '" + usuario.getCodigoUsuario() + "' pasó a estado Inactivo porque registra "
+                        + ventasAsociadas + " venta(s).",
+                usuarioMapper.toResponse(desactivado)
+        );
+    }
+
+    private boolean esSesionActual(Usuario usuario) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        String principal = authentication.getName();
+        return principal != null && principal.equalsIgnoreCase(usuario.getCodigoUsuario());
     }
 }

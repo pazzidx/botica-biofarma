@@ -3,24 +3,33 @@ package com.biofarma.inventario.presentation.controller;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.biofarma.inventario.application.dto.ActualizarUsuarioRequest;
+import com.biofarma.inventario.application.dto.EliminacionUsuarioResponse;
 import com.biofarma.inventario.application.dto.RegistrarUsuarioRequest;
 import com.biofarma.inventario.application.dto.UsuarioResponse;
-import com.biofarma.inventario.application.usecase.CambiarEstadoUsuarioUseCase;
+import com.biofarma.inventario.application.usecase.ActivarUsuarioUseCase;
+import com.biofarma.inventario.application.usecase.ActualizarUsuarioUseCase;
 import com.biofarma.inventario.application.usecase.EliminarUsuarioUseCase;
 import com.biofarma.inventario.application.usecase.ListarUsuariosUseCase;
 import com.biofarma.inventario.application.usecase.RegistrarUsuarioUseCase;
 import com.biofarma.inventario.domain.exception.CodigoUsuarioDuplicadoException;
+import com.biofarma.inventario.domain.exception.OperacionNoPermitidaException;
 import com.biofarma.inventario.infrastructure.security.SecurityConfig;
 import com.biofarma.inventario.presentation.advice.GlobalExceptionHandler;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -33,7 +42,6 @@ import tools.jackson.databind.ObjectMapper;
 
 @WebMvcTest(controllers = UsuarioController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
-@WithMockUser(username = "admin", roles = "ADMINISTRADORA")
 class UsuarioControllerTest {
 
     @Autowired
@@ -49,19 +57,26 @@ class UsuarioControllerTest {
     private ListarUsuariosUseCase listarUsuariosUseCase;
 
     @MockitoBean
+    private ActualizarUsuarioUseCase actualizarUsuarioUseCase;
+
+    @MockitoBean
     private EliminarUsuarioUseCase eliminarUsuarioUseCase;
 
     @MockitoBean
-    private CambiarEstadoUsuarioUseCase cambiarEstadoUsuarioUseCase;
+    private ActivarUsuarioUseCase activarUsuarioUseCase;
+
+    // --- PRUEBAS FUNCIONALES DE HU-01 (Autorizadas como ADMINISTRADORA) ---
 
     @Test
-    void deberiaRegistrarUsuarioYNoExponerPassword() throws Exception {
+    @WithMockUser(username = "admin", roles = {"ADMINISTRADORA"})
+    @DisplayName("Debería registrar usuario y no exponer password cuando lo ejecuta ADMINISTRADORA")
+    void deberiaRegistrarUsuarioTrabajadoraYNoExponerPassword() throws Exception {
         RegistrarUsuarioRequest request = new RegistrarUsuarioRequest(
                 "vendedor01",
                 "Carla",
                 "Mendoza",
                 "Clave1234",
-                "TRABAJADORA"
+                null
         );
         UsuarioResponse response = new UsuarioResponse(
                 2,
@@ -87,14 +102,16 @@ class UsuarioControllerTest {
                 .andExpect(content().string(not(containsString("Clave1234"))));
     }
 
-    @Test
-    void deberiaRetornarBadRequestCuandoFaltanCampos() throws Exception {
+   @Test
+   @WithMockUser(username = "admin", roles = {"ADMINISTRADORA"})
+   @DisplayName("Debería retornar BadRequest cuando faltan campos o los nombres tienen formato inválido")
+   void deberiaRetornarBadRequestCuandoFaltanCamposONombresTienenNumeros() throws Exception {
         RegistrarUsuarioRequest requestInvalido = new RegistrarUsuarioRequest(
                 "",
-                "",
-                "Mendoza",
+                "Carla123",
+                "Mendoza@",
                 "123",
-                ""
+                null
         );
 
         mockMvc.perform(post("/api/v1/usuarios")
@@ -104,32 +121,118 @@ class UsuarioControllerTest {
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.fieldErrors.codigoUsuario").exists())
                 .andExpect(jsonPath("$.fieldErrors.nombres").exists())
-                .andExpect(jsonPath("$.fieldErrors.password").exists())
-                .andExpect(jsonPath("$.fieldErrors.rol").exists());
+                .andExpect(jsonPath("$.fieldErrors.apellidos").exists())
+                .andExpect(jsonPath("$.fieldErrors.password").exists());
     }
 
     @Test
+    @WithMockUser(username = "admin", roles = {"ADMINISTRADORA"})
+    @DisplayName("Debería retornar Conflict cuando código de usuario ya existe")
     void deberiaRetornarConflictCuandoCodigoYaExiste() throws Exception {
         RegistrarUsuarioRequest request = new RegistrarUsuarioRequest(
-                "admin",
-                "Propietaria",
-                "Biofarma",
+                "trab01",
+                "Carla",
+                "Mendoza",
                 "Clave1234",
-                "ADMINISTRADORA"
+                "TRABAJADORA"
         );
 
         when(registrarUsuarioUseCase.ejecutar(any(RegistrarUsuarioRequest.class)))
-                .thenThrow(new CodigoUsuarioDuplicadoException("admin"));
+                .thenThrow(new CodigoUsuarioDuplicadoException("trab01"));
 
         mockMvc.perform(post("/api/v1/usuarios")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
-                .andExpect(jsonPath("$.message", containsString("admin")));
+                .andExpect(jsonPath("$.message", containsString("trab01")));
     }
 
     @Test
+    @WithMockUser(username = "admin", roles = {"ADMINISTRADORA"})
+    @DisplayName("Debería actualizar nombres y apellidos mediante PUT cuando lo solicita ADMINISTRADORA")
+    void deberiaActualizarNombresYApellidosEnPut() throws Exception {
+        ActualizarUsuarioRequest request = new ActualizarUsuarioRequest("Carla Sofía", "Mendoza Ruiz");
+        UsuarioResponse updated = new UsuarioResponse(
+                2, "vendedor01", "Carla Sofía", "Mendoza Ruiz", "TRABAJADORA", true, LocalDateTime.now()
+        );
+        when(actualizarUsuarioUseCase.ejecutar(eq(2), any(ActualizarUsuarioRequest.class))).thenReturn(updated);
+
+        mockMvc.perform(put("/api/v1/usuarios/2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombres").value("Carla Sofía"))
+                .andExpect(jsonPath("$.apellidos").value("Mendoza Ruiz"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMINISTRADORA"})
+    @DisplayName("Debería rechazar edición con números mediante PUT cuando lo solicita ADMINISTRADORA")
+    void deberiaRechazarEdicionConNumerosEnPut() throws Exception {
+        ActualizarUsuarioRequest request = new ActualizarUsuarioRequest("Carla9", "Mendoza$");
+
+        mockMvc.perform(put("/api/v1/usuarios/2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.nombres").exists())
+                .andExpect(jsonPath("$.fieldErrors.apellidos").exists());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMINISTRADORA"})
+    @DisplayName("Debería eliminar físicamente si cero ventas o desactivar si tiene ventas cuando lo solicita ADMINISTRADORA")
+    void deberiaEliminarFisicamenteSiCeroVentasYDesactivarSiTieneVentas() throws Exception {
+        when(eliminarUsuarioUseCase.ejecutar(2)).thenReturn(
+                new EliminacionUsuarioResponse(2, true, "Usuario eliminado definitivamente.", null)
+        );
+        UsuarioResponse inactiva = new UsuarioResponse(
+                3, "trab02", "Rosa", "Díaz", "TRABAJADORA", false, LocalDateTime.now()
+        );
+        when(eliminarUsuarioUseCase.ejecutar(3)).thenReturn(
+                new EliminacionUsuarioResponse(3, false, "Usuario desactivado por ventas asociadas.", inactiva)
+        );
+
+        mockMvc.perform(delete("/api/v1/usuarios/2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.eliminadoFisicamente").value(true));
+
+        mockMvc.perform(delete("/api/v1/usuarios/3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.eliminadoFisicamente").value(false))
+                .andExpect(jsonPath("$.usuario.activo").value(false));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMINISTRADORA"})
+    @DisplayName("Debería retornar 403 Forbidden al intentar eliminar cuenta administradora")
+    void deberiaRetornarForbiddenAlIntentarEliminarAdmin() throws Exception {
+        when(eliminarUsuarioUseCase.ejecutar(1))
+                .thenThrow(new OperacionNoPermitidaException("No está permitido eliminar la cuenta administradora."));
+
+        mockMvc.perform(delete("/api/v1/usuarios/1"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMINISTRADORA"})
+    @DisplayName("Debería reactivar usuario mediante PATCH cuando lo solicita ADMINISTRADORA")
+    void deberiaReactivarUsuarioEnPatch() throws Exception {
+        UsuarioResponse reactivada = new UsuarioResponse(
+                3, "trab02", "Rosa", "Díaz", "TRABAJADORA", true, LocalDateTime.now()
+        );
+        when(activarUsuarioUseCase.ejecutar(3)).thenReturn(reactivada);
+
+        mockMvc.perform(patch("/api/v1/usuarios/3/activar"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.activo").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMINISTRADORA"})
+    @DisplayName("Debería listar usuarios correctamente cuando lo solicita ADMINISTRADORA")
     void deberiaListarUsuariosCorrectamente() throws Exception {
         when(listarUsuariosUseCase.ejecutar()).thenReturn(List.of(
                 new UsuarioResponse(1, "admin", "Propietaria", "Biofarma", "ADMINISTRADORA", true, LocalDateTime.now())
@@ -139,5 +242,69 @@ class UsuarioControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].codigoUsuario").value("admin"))
                 .andExpect(jsonPath("$[0].rol").value("ADMINISTRADORA"));
+    }
+
+    // --- PRUEBAS DE AUTORIZACIÓN Y BLOQUEO POR ROL (BIO-31) ---
+
+    @Test
+    @WithMockUser(username = "trabajadora01", roles = {"TRABAJADORA"})
+    @DisplayName("Debería rechazar registro de usuario con 403 Forbidden cuando el rol es TRABAJADORA")
+    void deberiaRechazarRegistroCuandoUsuarioEsTrabajadora() throws Exception {
+        RegistrarUsuarioRequest request = new RegistrarUsuarioRequest(
+                "nuevoUser",
+                "Nombre",
+                "Apellido",
+                "Clave1234",
+                "TRABAJADORA"
+        );
+
+        mockMvc.perform(post("/api/v1/usuarios")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.error").value("Acceso denegado"))
+                .andExpect(jsonPath("$.message").value("No tiene permisos suficientes para realizar esta operación."));
+    }
+
+    @Test
+    @WithMockUser(username = "trabajadora01", roles = {"TRABAJADORA"})
+    @DisplayName("Debería rechazar listado de usuarios con 403 Forbidden cuando el rol es TRABAJADORA")
+    void deberiaRechazarListadoCuandoUsuarioEsTrabajadora() throws Exception {
+        mockMvc.perform(get("/api/v1/usuarios"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.error").value("Acceso denegado"))
+                .andExpect(jsonPath("$.message").value("No tiene permisos suficientes para realizar esta operación."));
+    }
+
+    @Test
+    @DisplayName("Debería rechazar registro de usuario con 401 Unauthorized cuando no existe autenticación")
+    void deberiaRechazarRegistroSinAutenticacion() throws Exception {
+        RegistrarUsuarioRequest request = new RegistrarUsuarioRequest(
+                "nuevoUser",
+                "Nombre",
+                "Apellido",
+                "Clave1234",
+                "TRABAJADORA"
+        );
+
+        mockMvc.perform(post("/api/v1/usuarios")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("No autorizado"))
+                .andExpect(jsonPath("$.message").value("Debe iniciar sesión para acceder a este recurso."));
+    }
+
+    @Test
+    @DisplayName("Debería rechazar listado de usuarios con 401 Unauthorized cuando no existe autenticación")
+    void deberiaRechazarListadoSinAutenticacion() throws Exception {
+        mockMvc.perform(get("/api/v1/usuarios"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("No autorizado"))
+                .andExpect(jsonPath("$.message").value("Debe iniciar sesión para acceder a este recurso."));
     }
 }

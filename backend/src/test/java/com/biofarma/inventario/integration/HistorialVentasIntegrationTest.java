@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -52,6 +53,9 @@ class HistorialVentasIntegrationTest {
     @Autowired
     private SpringDataVentaRepository springDataVentaRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
     private MockMvc mockMvc;
 
@@ -72,7 +76,7 @@ class HistorialVentasIntegrationTest {
         asegurarRol("ADMINISTRADORA");
         asegurarRol("TRABAJADORA");
 
-        crearUsuario("admin.hu03", "Propietaria", "Biofarma", "Admin123*", "ADMINISTRADORA");
+        crearUsuarioDirecto("admin.hu03", "Propietaria", "Biofarma", "Admin123*", "ADMINISTRADORA");
         crearUsuario("trab01.hu03", "Lucia", "Gomez", "Clave123*", "TRABAJADORA");
         crearUsuario("trab02.hu03", "Rosa", "Paredes", "Clave123*", "TRABAJADORA");
 
@@ -175,6 +179,22 @@ class HistorialVentasIntegrationTest {
         if (springDataRolRepository.findByNombre(nombreRol).isEmpty()) {
             springDataRolRepository.saveAndFlush(new RolEntity(null, nombreRol));
         }
+    }
+
+    private void crearUsuarioDirecto(String codigo, String nombres, String apellidos, String password, String rolNombre) {
+        if (springDataUsuarioRepository.findByCodigoUsuarioIgnoreCase(codigo).isPresent()) {
+            return;
+        }
+        RolEntity rol = springDataRolRepository.findByNombre(rolNombre).orElseThrow();
+        UsuarioEntity entity = new UsuarioEntity();
+        entity.setCodigoUsuario(codigo);
+        entity.setNombres(nombres);
+        entity.setApellidos(apellidos);
+        entity.setPasswordHash(passwordEncoder.encode(password));
+        entity.setRol(rol);
+        entity.setActivo(true);
+        entity.setFechaCreacion(LocalDateTime.now());
+        springDataUsuarioRepository.saveAndFlush(entity);
     }
 
     private void crearUsuario(String codigo, String nombres, String apellidos, String password, String rol)

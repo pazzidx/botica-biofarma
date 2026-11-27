@@ -19,5 +19,7 @@ public interface UsuarioRepository {
 
     List<Usuario> findAll();
 
+    long countVentasByUsuarioId(Integer idUsuario);
+
     void deleteById(Integer idUsuario);
 }

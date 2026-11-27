@@ -11,7 +11,7 @@ import jakarta.persistence.Table;
  * Entidad JPA mapeada exactamente a la tabla Roles de SQL Server.
  */
 @Entity
-@Table(name = "roles")
+@Table(name = "Roles")
 public class RolEntity {
 
     @Id

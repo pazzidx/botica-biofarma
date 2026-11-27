@@ -16,20 +16,11 @@ GO
 DECLARE @idRolAdmin INT = (SELECT id_rol FROM Roles WHERE nombre = 'ADMINISTRADORA');
 DECLARE @idRolTrab INT = (SELECT id_rol FROM Roles WHERE nombre = 'TRABAJADORA');
 
--- 2. Usuarios de prueba con contraseñas BCrypt reales
---    admin  -> Admin123*
---    trab01 -> Clave123*
---    trab02 -> Clave123*
+-- 2. Usuarios de prueba con hashes BCrypt pregenerados (solo si no existen previamente)
 IF NOT EXISTS (SELECT 1 FROM Usuarios WHERE codigo_usuario = 'admin')
 BEGIN
     INSERT INTO Usuarios (codigo_usuario, nombres, apellidos, password_hash, id_rol, activo)
     VALUES ('admin', 'Propietaria', 'Biofarma', '$2a$10$vL5PJndpM5hUT2HzMSSUIO3Q2p4z5n73p6lbN0DO.K5.lkPSKxrk.', @idRolAdmin, 1);
-END
-ELSE
-BEGIN
-    UPDATE Usuarios
-    SET password_hash = '$2a$10$vL5PJndpM5hUT2HzMSSUIO3Q2p4z5n73p6lbN0DO.K5.lkPSKxrk.'
-    WHERE codigo_usuario = 'admin' AND (password_hash = '' OR password_hash IS NULL);
 END
 
 IF NOT EXISTS (SELECT 1 FROM Usuarios WHERE codigo_usuario = 'trab01')

@@ -12,6 +12,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.biofarma.inventario.application.dto.RegistrarUsuarioRequest;
 import com.biofarma.inventario.application.dto.UsuarioResponse;
+import com.biofarma.inventario.application.usecase.CambiarEstadoUsuarioUseCase;
+import com.biofarma.inventario.application.usecase.EliminarUsuarioUseCase;
 import com.biofarma.inventario.application.usecase.ListarUsuariosUseCase;
 import com.biofarma.inventario.application.usecase.RegistrarUsuarioUseCase;
 import com.biofarma.inventario.domain.exception.CodigoUsuarioDuplicadoException;
@@ -24,12 +26,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 @WebMvcTest(controllers = UsuarioController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@WithMockUser(username = "admin", roles = "ADMINISTRADORA")
 class UsuarioControllerTest {
 
     @Autowired
@@ -43,6 +47,12 @@ class UsuarioControllerTest {
 
     @MockitoBean
     private ListarUsuariosUseCase listarUsuariosUseCase;
+
+    @MockitoBean
+    private EliminarUsuarioUseCase eliminarUsuarioUseCase;
+
+    @MockitoBean
+    private CambiarEstadoUsuarioUseCase cambiarEstadoUsuarioUseCase;
 
     @Test
     void deberiaRegistrarUsuarioYNoExponerPassword() throws Exception {

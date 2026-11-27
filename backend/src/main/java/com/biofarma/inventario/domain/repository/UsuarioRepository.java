@@ -18,4 +18,6 @@ public interface UsuarioRepository {
     Optional<Usuario> findByCodigoUsuario(String codigoUsuario);
 
     List<Usuario> findAll();
+
+    void deleteById(Integer idUsuario);
 }

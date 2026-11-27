@@ -1,6 +1,7 @@
 package com.biofarma.inventario.infrastructure.security;
 
 import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -14,18 +15,25 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * Configuración base de seguridad Spring Security.
- * Deja temporalmente público /api/v1/usuarios/** para pruebas E2E de HU-01 antes de implementar JWT en HU-02.
+ * Configuración de seguridad Spring Security.
+ * Protege /api/v1/usuarios/** exclusivamente para ADMINISTRADORA y /api/v1/ventas/** con JWT.
  */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    public SecurityConfig(ObjectProvider<JwtAuthenticationFilter> jwtAuthenticationFilterProvider) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilterProvider.getIfAvailable();
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -34,12 +42,13 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
+        http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/usuarios/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/usuarios/**").hasRole("ADMINISTRADORA")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
@@ -57,8 +66,13 @@ public class SecurityConfig {
                                     "{\"status\":403,\"error\":\"Acceso denegado\",\"message\":\"No tiene permisos suficientes para realizar esta operación.\"}"
                             );
                         })
-                )
-                .build();
+                );
+
+        if (jwtAuthenticationFilter != null) {
+            http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        }
+
+        return http.build();
     }
 
     @Bean

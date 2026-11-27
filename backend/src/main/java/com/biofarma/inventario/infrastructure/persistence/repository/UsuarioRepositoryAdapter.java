@@ -64,4 +64,9 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
                 .map(mapper::toDomain)
                 .toList();
     }
+
+    @Override
+    public void deleteById(Integer idUsuario) {
+        jpaUsuarioRepository.deleteById(idUsuario);
+    }
 }

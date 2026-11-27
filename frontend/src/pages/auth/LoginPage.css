@@ -1,0 +1,122 @@
+.login-shell {
+  min-height: calc(100vh - 64px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--bf-surface);
+  border: 1px solid var(--bf-border);
+  border-radius: 16px;
+  box-shadow: var(--bf-shadow);
+  padding: 28px;
+}
+
+.login-eyebrow {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bf-primary);
+  margin-bottom: 4px;
+}
+
+.login-card h1 {
+  margin: 0 0 6px;
+  font-size: 1.5rem;
+}
+
+.login-subtitle {
+  margin: 0 0 18px;
+  font-size: 0.92rem;
+  color: #475569;
+}
+
+.login-error {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  margin-bottom: 14px;
+  font-size: 0.9rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.login-form input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--bf-border);
+  font-size: 0.95rem;
+}
+
+.btn-login-primary {
+  margin-top: 4px;
+  padding: 11px 16px;
+  border-radius: 10px;
+  border: none;
+  background: var(--bf-primary);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-login-primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.quick-login-box {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--bf-border);
+}
+
+.quick-login-title {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+
+.quick-login-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-quick-login {
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--bf-border);
+  background: #f8fafc;
+  color: var(--bf-text);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.btn-quick-login:hover {
+  background: var(--bf-primary-soft);
+  color: var(--bf-primary);
+}

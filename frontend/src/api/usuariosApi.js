@@ -16,3 +16,20 @@ export async function listarUsuarios() {
   const { data } = await httpClient.get('/api/v1/usuarios');
   return data;
 }
+
+/**
+ * Elimina o desactiva un usuario por su ID (solo ADMINISTRADORA).
+ * @param {number} idUsuario
+ */
+export async function eliminarUsuario(idUsuario) {
+  await httpClient.delete(`/api/v1/usuarios/${idUsuario}`);
+}
+
+/**
+ * Alterna el estado activo/inactivo de un usuario por su ID (solo ADMINISTRADORA).
+ * @param {number} idUsuario
+ */
+export async function cambiarEstadoUsuario(idUsuario) {
+  const { data } = await httpClient.patch(`/api/v1/usuarios/${idUsuario}/estado`);
+  return data;
+}

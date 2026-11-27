@@ -2,7 +2,10 @@ package com.biofarma.inventario.presentation.advice;
 
 import com.biofarma.inventario.domain.exception.CodigoUsuarioDuplicadoException;
 import com.biofarma.inventario.domain.exception.DatosUsuarioInvalidosException;
+import com.biofarma.inventario.domain.exception.AccesoVentaDenegadoException;
+import com.biofarma.inventario.domain.exception.CredencialesInvalidasException;
 import com.biofarma.inventario.domain.exception.RolNoEncontradoException;
+import com.biofarma.inventario.domain.exception.VentaNoEncontradaException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -107,6 +110,48 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT,
                 "Conflicto de integridad",
                 "Ya existe un registro con los mismos datos únicos.",
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidCredentials(
+            CredencialesInvalidasException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.UNAUTHORIZED,
+                "No autorizado",
+                ex.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(AccesoVentaDenegadoException.class)
+    public ResponseEntity<ApiErrorResponse> handleVentaAccessDenied(
+            AccesoVentaDenegadoException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.FORBIDDEN,
+                "Acceso denegado",
+                ex.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(VentaNoEncontradaException.class)
+    public ResponseEntity<ApiErrorResponse> handleVentaNotFound(
+            VentaNoEncontradaException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                "Venta no encontrada",
+                ex.getMessage(),
                 request.getRequestURI(),
                 Map.of()
         );

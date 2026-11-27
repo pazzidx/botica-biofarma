@@ -7,10 +7,18 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
+  Trash2,
+  UserCheck,
   UserPlus,
   Users,
 } from 'lucide-react';
-import { listarUsuarios, registrarUsuario } from '../../api/usuariosApi';
+import {
+  cambiarEstadoUsuario,
+  eliminarUsuario,
+  listarUsuarios,
+  registrarUsuario,
+} from '../../api/usuariosApi';
+import { useAuth } from '../../context/useAuth';
 import './UsuariosPage.css';
 
 const INITIAL_FORM = {
@@ -71,10 +79,13 @@ function formatearFecha(fechaIso) {
 }
 
 export default function UsuariosPage() {
+  const { usuario: usuarioActual } = useAuth();
+
   const [form, setForm] = useState(INITIAL_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [actionUserId, setActionUserId] = useState(null);
 
   const [usuarios, setUsuarios] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -173,6 +184,51 @@ export default function UsuariosPage() {
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEliminar = async (user) => {
+    const confirmado = window.confirm(
+      `¿Seguro que deseas eliminar al usuario "${user.codigoUsuario}" (${user.nombres} ${user.apellidos})?`
+    );
+    if (!confirmado) return;
+
+    setFeedback(null);
+    setActionUserId(user.idUsuario);
+    try {
+      await eliminarUsuario(user.idUsuario);
+      await cargarUsuarios();
+      setFeedback({
+        type: 'success',
+        message: `Operación completada sobre el usuario "${user.codigoUsuario}".`,
+      });
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error.message || 'No se pudo eliminar el usuario.',
+      });
+    } finally {
+      setActionUserId(null);
+    }
+  };
+
+  const handleReactivar = async (user) => {
+    setFeedback(null);
+    setActionUserId(user.idUsuario);
+    try {
+      await cambiarEstadoUsuario(user.idUsuario);
+      await cargarUsuarios();
+      setFeedback({
+        type: 'success',
+        message: `Usuario "${user.codigoUsuario}" reactivado correctamente.`,
+      });
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error.message || 'No se pudo reactivar el usuario.',
+      });
+    } finally {
+      setActionUserId(null);
     }
   };
 
@@ -404,36 +460,72 @@ export default function UsuariosPage() {
                     <th>Rol</th>
                     <th>Estado</th>
                     <th>Registro</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {usuariosFiltrados.map((user) => (
-                    <tr key={user.idUsuario}>
-                      <td>
-                        <code className="code-pill">{user.codigoUsuario}</code>
-                      </td>
-                      <td>
-                        <span className="person-name">
-                          {user.nombres} {user.apellidos}
-                        </span>
-                      </td>
-                      <td>
-                        <span
-                          className={`role-badge ${
-                            user.rol === 'ADMINISTRADORA' ? 'role-admin' : 'role-worker'
-                          }`}
-                        >
-                          {user.rol}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`status-dot ${user.activo ? 'is-active' : 'is-inactive'}`}>
-                          {user.activo ? 'Activo' : 'Inactivo'}
-                        </span>
-                      </td>
-                      <td className="date-cell">{formatearFecha(user.fechaCreacion)}</td>
-                    </tr>
-                  ))}
+                  {usuariosFiltrados.map((user) => {
+                    const esUsuarioActual =
+                      usuarioActual?.codigoUsuario === user.codigoUsuario ||
+                      usuarioActual?.idUsuario === user.idUsuario;
+                    const procesando = actionUserId === user.idUsuario;
+
+                    return (
+                      <tr key={user.idUsuario}>
+                        <td>
+                          <code className="code-pill">{user.codigoUsuario}</code>
+                        </td>
+                        <td>
+                          <span className="person-name">
+                            {user.nombres} {user.apellidos}
+                          </span>
+                        </td>
+                        <td>
+                          <span
+                            className={`role-badge ${user.rol === 'ADMINISTRADORA' ? 'role-admin' : 'role-worker'
+                              }`}
+                          >
+                            {user.rol}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`status-dot ${user.activo ? 'is-active' : 'is-inactive'}`}>
+                            {user.activo ? 'Activo' : 'Inactivo'}
+                          </span>
+                        </td>
+                        <td className="date-cell">{formatearFecha(user.fechaCreacion)}</td>
+                        <td>
+                          {esUsuarioActual ? (
+                            <span className="date-cell">Sesión actual</span>
+                          ) : user.activo ? (
+                            <button
+                              type="button"
+                              className="secondary-btn"
+                              style={{ color: '#b91c1c', borderColor: '#fecaca', padding: '0.35rem 0.65rem' }}
+                              onClick={() => handleEliminar(user)}
+                              disabled={procesando}
+                              title="Eliminar usuario"
+                            >
+                              <Trash2 size={15} aria-hidden="true" />
+                              {procesando ? 'Procesando...' : 'Eliminar'}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="secondary-btn"
+                              style={{ color: '#15803d', borderColor: '#bbf7d0', padding: '0.35rem 0.65rem' }}
+                              onClick={() => handleReactivar(user)}
+                              disabled={procesando}
+                              title="Reactivar usuario"
+                            >
+                              <UserCheck size={15} aria-hidden="true" />
+                              {procesando ? 'Activando...' : 'Activar'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Home, LogOut, Pill, Shield, User, Users } from 'lucide-react';
+import { Home, LogOut, Pill, Receipt, Shield, User, Users } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
 import './AppLayout.css';
 
@@ -39,6 +39,16 @@ export default function AppLayout() {
             >
               <Home size={18} />
               <span>Inicio</span>
+            </NavLink>
+
+            <NavLink
+              to="/ventas/historial"
+              className={({ isActive }) =>
+                `nav-item ${isActive ? 'is-active' : ''}`
+              }
+            >
+              <Receipt size={18} />
+              <span>Historial de Ventas</span>
             </NavLink>
 
             {isAdmin && (

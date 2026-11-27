@@ -27,7 +27,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * Configuración de seguridad Spring Security con RBAC y JWT sin estado (HU-01, HU-02 / BIO-31).
+ * Configuración de seguridad Spring Security con RBAC y JWT sin estado (HU-01, HU-02, HU-03).
  */
 @Configuration
 @EnableWebSecurity
@@ -39,12 +39,6 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Declara un UserDetailsService explícito que documenta y asegura que la API no utiliza
-     * autenticación tradicional basada en sesiones o formulario, sino tokens JWT sin estado.
-     * Esto evita que Spring Security genere una contraseña aleatoria de desarrollo en consola
-     * y garantiza que el único mecanismo de autenticación sea el filtro JWT.
-     */
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> {
@@ -82,13 +76,9 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Endpoint público de autenticación
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
-                        // 2. Endpoint de cierre de sesión: accesible para cualquier usuario autenticado
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated()
-                        // 3. Gestión de usuarios: Restringido EXCLUSIVAMENTE a rol ADMINISTRADORA (BIO-31)
                         .requestMatchers("/api/v1/usuarios/**").hasRole("ADMINISTRADORA")
-                        // 4. Todo lo demás requiere autenticación
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

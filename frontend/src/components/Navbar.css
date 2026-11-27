@@ -1,0 +1,75 @@
+.bf-navbar {
+  background: var(--bf-surface);
+  border-bottom: 1px solid var(--bf-border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.bf-navbar-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.bf-navbar-left,
+.bf-navbar-right,
+.bf-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.bf-brand {
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--bf-primary);
+  text-decoration: none;
+}
+
+.bf-nav-links a {
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: #475569;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.bf-nav-links a.active {
+  background: var(--bf-primary-soft);
+  color: var(--bf-primary);
+}
+
+.bf-user-pill {
+  font-size: 0.88rem;
+  color: var(--bf-text);
+  background: #f8fafc;
+  border: 1px solid var(--bf-border);
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+.bf-btn-logout,
+.bf-btn-login-link {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--bf-border);
+  background: var(--bf-surface);
+  color: var(--bf-text);
+  font-weight: 600;
+  font-size: 0.88rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.bf-btn-logout:hover {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}

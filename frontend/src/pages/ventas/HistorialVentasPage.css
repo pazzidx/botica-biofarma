@@ -1,0 +1,343 @@
+.ventas-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+}
+
+.ventas-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 22px 26px;
+  background: var(--bf-surface);
+  border: 1px solid var(--bf-border);
+  border-radius: 16px;
+  box-shadow: var(--bf-shadow);
+  margin-bottom: 16px;
+}
+
+.ventas-brand-block {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ventas-brand-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--bf-primary-soft);
+  color: var(--bf-primary);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.ventas-eyebrow {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bf-primary);
+  margin-bottom: 2px;
+}
+
+.ventas-header h1 {
+  margin: 0;
+  font-size: 1.55rem;
+  line-height: 1.2;
+  color: var(--bf-text);
+}
+
+.ventas-subtitle {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  color: var(--bf-text-muted);
+}
+
+.ventas-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ventas-stat-chip {
+  min-width: 130px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--bf-surface-muted);
+  border: 1px solid var(--bf-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.ventas-stat-label {
+  font-size: 0.75rem;
+  color: var(--bf-text-muted);
+  font-weight: 600;
+}
+
+.ventas-stat-value {
+  font-size: 1.2rem;
+  color: var(--bf-text);
+}
+
+.ventas-scope-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  margin-bottom: 18px;
+  border: 1px solid var(--bf-border);
+}
+
+.scope-admin {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.scope-worker {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e40af;
+}
+
+.ventas-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-size: 0.92rem;
+}
+
+.ventas-alert-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.ventas-card {
+  background: var(--bf-surface);
+  border: 1px solid var(--bf-border);
+  border-radius: 16px;
+  box-shadow: var(--bf-shadow);
+  padding: 20px;
+}
+
+.ventas-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ventas-search-box {
+  flex: 1;
+  min-width: 240px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--bf-border-strong);
+  border-radius: 10px;
+  background: var(--bf-surface-muted);
+  color: var(--bf-text-muted);
+}
+
+.ventas-search-box input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.92rem;
+  color: var(--bf-text);
+}
+
+.ventas-btn-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--bf-border-strong);
+  background: var(--bf-surface);
+  color: var(--bf-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ventas-btn-refresh:hover:not(:disabled) {
+  background: var(--bf-surface-muted);
+}
+
+.ventas-table-wrap {
+  overflow-x: auto;
+}
+
+.ventas-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.ventas-table th,
+.ventas-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--bf-border);
+}
+
+.ventas-table th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bf-text-muted);
+  background: var(--bf-surface-muted);
+}
+
+.ticket-code {
+  font-family: var(--bf-mono);
+  font-size: 0.85rem;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--bf-surface-muted);
+  border: 1px solid var(--bf-border);
+}
+
+.worker-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.worker-cell span {
+  font-size: 0.78rem;
+  color: var(--bf-text-muted);
+}
+
+.amount-cell {
+  font-weight: 700;
+  color: var(--bf-text);
+  white-space: nowrap;
+}
+
+.estado-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.col-actions {
+  text-align: right;
+}
+
+.ventas-btn-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--bf-primary);
+  background: var(--bf-primary-soft);
+  color: var(--bf-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ventas-btn-detail:hover {
+  background: var(--bf-primary);
+  color: #ffffff;
+}
+
+.ventas-empty-state {
+  padding: 36px 16px;
+  text-align: center;
+  color: var(--bf-text-muted);
+}
+
+.ventas-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 50;
+}
+
+.ventas-modal {
+  width: 100%;
+  max-width: 720px;
+  background: var(--bf-surface);
+  border-radius: 16px;
+  border: 1px solid var(--bf-border);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+}
+
+.ventas-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--bf-border);
+}
+
+.ventas-modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.ventas-modal-close {
+  border: 1px solid var(--bf-border);
+  background: var(--bf-surface-muted);
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  color: var(--bf-text-muted);
+}
+
+.ventas-modal-body {
+  padding: 20px 22px 24px;
+}
+
+.ventas-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--bf-surface-muted);
+  border: 1px solid var(--bf-border);
+  margin-bottom: 18px;
+}
+
+.meta-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--bf-text-muted);
+  margin-bottom: 2px;
+}
+
+.spin {
+  animation: bf-spin 0.9s linear infinite;
+}
+
+@keyframes bf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

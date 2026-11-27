@@ -14,7 +14,7 @@ import javax.crypto.SecretKey;
 
 /**
  * Componente de infraestructura para la generación, firma y validación de tokens JWT
- * utilizando JJWT y clave segura HMAC-SHA256 (HU-02 / BIO-29 / BIO-30 / BIO-31).
+ * utilizando JJWT y clave segura HMAC-SHA256 (HU-02 / HU-03).
  */
 public class JwtService implements TokenProvider {
 
@@ -57,6 +57,21 @@ public class JwtService implements TokenProvider {
                 .compact();
     }
 
+    public String generarToken(Integer idUsuario, String codigoUsuario, String rol) {
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("idUsuario", idUsuario);
+        extraClaims.put("codigoUsuario", codigoUsuario);
+        extraClaims.put("rol", rol);
+
+        return Jwts.builder()
+                .claims(extraClaims)
+                .subject(codigoUsuario)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + expirationMs))
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
+                .compact();
+    }
+
     @Override
     public long getExpiracionMs() {
         return expirationMs;
@@ -71,14 +86,6 @@ public class JwtService implements TokenProvider {
         return claims.get("rol", String.class);
     }
 
-    /**
-     * Extrae la fecha exacta de expiración contenida en los claims del token.
-     *
-     * @param token Token JWT firmado en formato compacto.
-     * @return Objeto {@link Date} con la marca temporal de expiración.
-     * @throws IllegalArgumentException si el token es nulo o está en blanco.
-     * @throws io.jsonwebtoken.JwtException si la firma no es válida, el token está corrupto o expirado.
-     */
     public Date extraerFechaExpiracion(String token) {
         if (token == null || token.isBlank()) {
             throw new IllegalArgumentException("El token no puede ser nulo ni vacío.");

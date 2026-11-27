@@ -1,7 +1,9 @@
 package com.biofarma.inventario.infrastructure.security;
 
+import com.biofarma.inventario.domain.model.RolNombre;
 import com.biofarma.inventario.domain.model.Usuario;
 import com.biofarma.inventario.domain.repository.UsuarioRepository;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,9 +18,9 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Filtro HTTP que intercepta cada solicitud, valida el token JWT en el encabezado
- * Authorization: Bearer <token>, verifica el estado activo del usuario en persistencia
- * y carga la autenticación en el SecurityContextHolder (HU-02 / BIO-30).
+ * Filtro HTTP que valida el token JWT en Authorization: Bearer <token>, verifica el estado
+ * activo del usuario en persistencia y puebla el SecurityContextHolder con
+ * {@link UsuarioAutenticadoPrincipal} (HU-02 / HU-03).
  */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -41,31 +43,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         String authHeader = request.getHeader(HEADER_AUTHORIZATION);
 
-        if (authHeader == null || !authHeader.startsWith(TOKEN_PREFIX)) {
+        if (jwtService == null || authHeader == null || !authHeader.startsWith(TOKEN_PREFIX)) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String jwt = authHeader.substring(TOKEN_PREFIX.length()).trim();
 
-        if (jwtService.esTokenValido(jwt)) {
-            String codigoUsuario = jwtService.extraerCodigoUsuario(jwt);
+        if (!jwt.isEmpty() && jwtService.esTokenValido(jwt)) {
+            Claims claims = jwtService.extraerClaims(jwt);
+            String codigoUsuario = claims.getSubject();
 
             if (codigoUsuario != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 if (usuarioRepository != null) {
                     Optional<Usuario> usuarioOpt = usuarioRepository.findByCodigoUsuario(codigoUsuario);
                     if (usuarioOpt.isPresent() && usuarioOpt.get().isActivo()) {
                         Usuario usuario = usuarioOpt.get();
-                        String rol = usuario.getRol().getNombre().name();
-                        establecerAutenticacion(request, usuario.getCodigoUsuario(), rol);
+                        establecerAutenticacion(
+                                request,
+                                usuario.getIdUsuario(),
+                                usuario.getCodigoUsuario(),
+                                usuario.getRol().getNombre()
+                        );
                     } else {
-                        // Usuario inexistente o desactivado: revocar inmediatamente el acceso aunque el token sea criptográficamente válido
                         SecurityContextHolder.clearContext();
                     }
                 } else {
-                    // Fallback para entornos donde el repositorio no se encuentre inyectado en el filtro
-                    String rol = jwtService.extraerRol(jwt);
-                    establecerAutenticacion(request, codigoUsuario, rol);
+                    Number idClaim = claims.get("idUsuario", Number.class);
+                    Integer idUsuario = idClaim != null ? idClaim.intValue() : null;
+                    RolNombre rol = RolNombre.fromString(claims.get("rol", String.class));
+                    establecerAutenticacion(request, idUsuario, codigoUsuario, rol);
                 }
             }
         }
@@ -73,13 +80,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private void establecerAutenticacion(HttpServletRequest request, String codigoUsuario, String rol) {
+    private void establecerAutenticacion(
+            HttpServletRequest request,
+            Integer idUsuario,
+            String codigoUsuario,
+            RolNombre rol
+    ) {
+        UsuarioAutenticadoPrincipal principal = new UsuarioAutenticadoPrincipal(idUsuario, codigoUsuario, rol);
         List<SimpleGrantedAuthority> authorities = rol != null
-                ? List.of(new SimpleGrantedAuthority("ROLE_" + rol))
+                ? List.of(new SimpleGrantedAuthority("ROLE_" + rol.name()))
                 : List.of();
 
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                codigoUsuario,
+                principal,
                 null,
                 authorities
         );

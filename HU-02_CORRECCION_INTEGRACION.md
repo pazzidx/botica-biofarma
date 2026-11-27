@@ -142,7 +142,7 @@ Se confirmó la vigencia del modelo de seguridad multicapa (Defensa en Profundid
 | Endpoint | Método HTTP | Restricción de Acceso | Validación de Seguridad |
 | :--- | :---: | :---: | :---: |
 | `/api/v1/auth/login` | `POST` | Público (`permitAll()`) | Verificación de credenciales BCrypt y estado activo. |
-| `/api/v1/auth/logout` | `POST` | Autenticado (`authenticated()`) | Token JWT válido en blacklist / SecurityContext. |
+| `/api/v1/auth/logout` | `POST` | Autenticado (`authenticated()`) | Token JWT válido y contexto de seguridad autenticado. |
 | `/api/v1/usuarios` | `POST` | Exclusivo `ADMINISTRADORA` | `@PreAuthorize` + `hasRole('ADMINISTRADORA')` en filtro. |
 | `/api/v1/usuarios` | `GET` | Exclusivo `ADMINISTRADORA` | `@PreAuthorize` + `hasRole('ADMINISTRADORA')` en filtro. |
 | `/api/v1/usuarios/{id}` | `PUT` | Exclusivo `ADMINISTRADORA` | `@PreAuthorize` + `hasRole('ADMINISTRADORA')` en filtro. |

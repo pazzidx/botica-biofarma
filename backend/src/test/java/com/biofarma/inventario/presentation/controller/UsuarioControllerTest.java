@@ -149,6 +149,8 @@ class UsuarioControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "admin", roles = {"ADMINISTRADORA"})
+    @DisplayName("Debería actualizar nombres y apellidos mediante PUT cuando lo solicita ADMINISTRADORA")
     void deberiaActualizarNombresYApellidosEnPut() throws Exception {
         ActualizarUsuarioRequest request = new ActualizarUsuarioRequest("Carla Sofía", "Mendoza Ruiz");
         UsuarioResponse updated = new UsuarioResponse(
@@ -165,6 +167,8 @@ class UsuarioControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "admin", roles = {"ADMINISTRADORA"})
+    @DisplayName("Debería rechazar edición con números mediante PUT cuando lo solicita ADMINISTRADORA")
     void deberiaRechazarEdicionConNumerosEnPut() throws Exception {
         ActualizarUsuarioRequest request = new ActualizarUsuarioRequest("Carla9", "Mendoza$");
 
@@ -177,6 +181,8 @@ class UsuarioControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "admin", roles = {"ADMINISTRADORA"})
+    @DisplayName("Debería eliminar físicamente si cero ventas o desactivar si tiene ventas cuando lo solicita ADMINISTRADORA")
     void deberiaEliminarFisicamenteSiCeroVentasYDesactivarSiTieneVentas() throws Exception {
         when(eliminarUsuarioUseCase.ejecutar(2)).thenReturn(
                 new EliminacionUsuarioResponse(2, true, "Usuario eliminado definitivamente.", null)
@@ -199,6 +205,8 @@ class UsuarioControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "admin", roles = {"ADMINISTRADORA"})
+    @DisplayName("Debería retornar 403 Forbidden al intentar eliminar cuenta administradora")
     void deberiaRetornarForbiddenAlIntentarEliminarAdmin() throws Exception {
         when(eliminarUsuarioUseCase.ejecutar(1))
                 .thenThrow(new OperacionNoPermitidaException("No está permitido eliminar la cuenta administradora."));
@@ -209,6 +217,8 @@ class UsuarioControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "admin", roles = {"ADMINISTRADORA"})
+    @DisplayName("Debería reactivar usuario mediante PATCH cuando lo solicita ADMINISTRADORA")
     void deberiaReactivarUsuarioEnPatch() throws Exception {
         UsuarioResponse reactivada = new UsuarioResponse(
                 3, "trab02", "Rosa", "Díaz", "TRABAJADORA", true, LocalDateTime.now()

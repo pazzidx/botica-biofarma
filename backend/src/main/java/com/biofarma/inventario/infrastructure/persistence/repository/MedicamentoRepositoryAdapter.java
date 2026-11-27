@@ -2,6 +2,7 @@ package com.biofarma.inventario.infrastructure.persistence.repository;
 
 import com.biofarma.inventario.domain.model.Medicamento;
 import com.biofarma.inventario.domain.repository.MedicamentoRepository;
+import com.biofarma.inventario.infrastructure.persistence.entity.ProductoEntity;
 import com.biofarma.inventario.infrastructure.persistence.mapper.ProductoEntityMapper;
 import java.util.List;
 import java.util.Optional;
@@ -31,7 +32,14 @@ public class MedicamentoRepositoryAdapter implements MedicamentoRepository {
 
     @Override
     public Medicamento save(Medicamento medicamento) {
-        return mapper.toDomain(springDataRepository.save(mapper.toEntity(medicamento)));
+        ProductoEntity entity = mapper.toEntity(medicamento);
+        if (medicamento.getIdProducto() != null) {
+            int stockActual = springDataRepository.findById(medicamento.getIdProducto())
+                    .map(ProductoEntity::getStockActual)
+                    .orElse(0);
+            entity.setStockActual(stockActual);
+        }
+        return mapper.toDomain(springDataRepository.save(entity));
     }
 
     @Override

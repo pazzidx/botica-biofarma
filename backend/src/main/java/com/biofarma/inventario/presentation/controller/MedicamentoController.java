@@ -12,6 +12,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -48,9 +49,14 @@ public class MedicamentoController {
 
     @GetMapping
     public ResponseEntity<List<MedicamentoResponse>> listar(
-            @RequestParam(name = "soloActivos", required = false) Boolean soloActivos
+            @RequestParam(name = "soloActivos", required = false) Boolean soloActivos,
+            Authentication authentication
     ) {
-        return ResponseEntity.ok(listarMedicamentosUseCase.ejecutar(soloActivos));
+        boolean esAdministradora = authentication != null
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_ADMINISTRADORA".equals(authority.getAuthority()));
+        Boolean filtroActivos = esAdministradora ? soloActivos : Boolean.TRUE;
+        return ResponseEntity.ok(listarMedicamentosUseCase.ejecutar(filtroActivos));
     }
 
     @PostMapping

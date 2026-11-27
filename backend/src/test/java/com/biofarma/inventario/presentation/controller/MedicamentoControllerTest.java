@@ -3,6 +3,8 @@ package com.biofarma.inventario.presentation.controller;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -200,5 +202,24 @@ class MedicamentoControllerTest {
         mockMvc.perform(get("/api/v1/medicamentos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].codigoProducto").value("MED-001"));
+    }
+
+    @Test
+    @WithMockUser(roles = "TRABAJADORA")
+    void deberiaForzarSoloActivosParaTrabajadoraAunqueSoliciteSoloActivosFalse() throws Exception {
+        when(listarMedicamentosUseCase.ejecutar(Boolean.TRUE)).thenReturn(List.of(
+                new MedicamentoResponse(
+                        1, "MED-001", "Paracetamol", "Paracetamol", "Tabletas",
+                        "Genfar", new BigDecimal("5.00"), 10, false, true, LocalDateTime.now()
+                )
+        ));
+
+        mockMvc.perform(get("/api/v1/medicamentos").param("soloActivos", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].codigoProducto").value("MED-001"))
+                .andExpect(jsonPath("$[0].activo").value(true));
+
+        verify(listarMedicamentosUseCase).ejecutar(Boolean.TRUE);
+        verify(listarMedicamentosUseCase, never()).ejecutar(Boolean.FALSE);
     }
 }

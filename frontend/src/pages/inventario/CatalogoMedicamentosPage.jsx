@@ -125,9 +125,9 @@ export default function CatalogoMedicamentosPage() {
     if (!query) return medicamentos;
     return medicamentos.filter(
       (item) =>
-        item.codigoProducto.toLowerCase().includes(query) ||
-        item.nombreComercial.toLowerCase().includes(query) ||
-        item.principioActivo.toLowerCase().includes(query)
+        (item.codigoProducto || '').toLowerCase().includes(query) ||
+        (item.nombreComercial || '').toLowerCase().includes(query) ||
+        (item.principioActivo || '').toLowerCase().includes(query)
     );
   }, [medicamentos, searchTerm]);
 
@@ -151,7 +151,7 @@ export default function CatalogoMedicamentosPage() {
     setForm({
       codigoProducto: med.codigoProducto,
       nombreComercial: med.nombreComercial,
-      principioActivo: med.principioActivo,
+      principioActivo: med.principioActivo || '',
       presentacion: med.presentacion,
       laboratorio: med.laboratorio || '',
       precioVenta: String(med.precioVenta),

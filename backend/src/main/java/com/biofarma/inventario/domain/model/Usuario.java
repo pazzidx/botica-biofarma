@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
  */
 public class Usuario {
 
-    private static final int MAX_CODIGO_LENGTH = 30;
+    private static final int MAX_CODIGO_LENGTH = 20;
     private static final int MIN_CODIGO_LENGTH = 3;
     private static final int MAX_NOMBRE_LENGTH = 100;
     private static final int MIN_PASSWORD_LENGTH = 6;

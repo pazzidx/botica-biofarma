@@ -14,13 +14,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.biofarma.inventario.application.dto.ActualizarMedicamentoRequest;
+import com.biofarma.inventario.application.dto.MedicamentoDisponibilidadResponse;
 import com.biofarma.inventario.application.dto.MedicamentoResponse;
 import com.biofarma.inventario.application.dto.RegistrarMedicamentoRequest;
 import com.biofarma.inventario.application.usecase.ActualizarMedicamentoUseCase;
+import com.biofarma.inventario.application.usecase.ConsultarDisponibilidadMedicamentosUseCase;
 import com.biofarma.inventario.application.usecase.DesactivarMedicamentoUseCase;
 import com.biofarma.inventario.application.usecase.ListarMedicamentosUseCase;
 import com.biofarma.inventario.application.usecase.RegistrarMedicamentoUseCase;
 import com.biofarma.inventario.domain.exception.CodigoMedicamentoDuplicadoException;
+import com.biofarma.inventario.domain.exception.DatosInventarioInconsistentesException;
+import com.biofarma.inventario.domain.exception.DatosMedicamentoInvalidosException;
 import com.biofarma.inventario.infrastructure.security.SecurityConfig;
 import com.biofarma.inventario.presentation.advice.GlobalExceptionHandler;
 import java.math.BigDecimal;
@@ -57,6 +61,9 @@ class MedicamentoControllerTest {
 
     @MockitoBean
     private ListarMedicamentosUseCase listarMedicamentosUseCase;
+
+    @MockitoBean
+    private ConsultarDisponibilidadMedicamentosUseCase consultarDisponibilidadMedicamentosUseCase;
 
     @Test
     void deberiaRetornarUnauthorizedSinAutenticacion() throws Exception {
@@ -221,5 +228,82 @@ class MedicamentoControllerTest {
 
         verify(listarMedicamentosUseCase).ejecutar(Boolean.TRUE);
         verify(listarMedicamentosUseCase, never()).ejecutar(Boolean.FALSE);
+    }
+
+    @Test
+    void deberiaRetornarUnauthorizedAlConsultarDisponibilidadSinToken() throws Exception {
+        mockMvc.perform(get("/api/v1/medicamentos/disponibilidad").param("termino", "Paracetamol"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "TRABAJADORA")
+    void deberiaPermitirATrabajadoraConsultarDisponibilidadYStock() throws Exception {
+        when(consultarDisponibilidadMedicamentosUseCase.ejecutar("Para", null)).thenReturn(List.of(
+                new MedicamentoDisponibilidadResponse(
+                        1, "MED-001", "Paracetamol 500mg", "Paracetamol", "Caja x 20",
+                        "Genfar", new BigDecimal("12.50"), 18, false, "Disponible", true
+                ),
+                new MedicamentoDisponibilidadResponse(
+                        2, "MED-002", "Paracetamol Jarabe", "Paracetamol", "Frasco 120ml",
+                        "Medrock", new BigDecimal("14.00"), 0, false, "Agotado", false
+                )
+        ));
+
+        mockMvc.perform(get("/api/v1/medicamentos/disponibilidad").param("termino", "Para"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].codigoProducto").value("MED-001"))
+                .andExpect(jsonPath("$[0].stockActual").value(18))
+                .andExpect(jsonPath("$[0].precioVenta").value(12.50))
+                .andExpect(jsonPath("$[0].estadoDisponibilidad").value("Disponible"))
+                .andExpect(jsonPath("$[0].disponible").value(true))
+                .andExpect(jsonPath("$[1].estadoDisponibilidad").value("Agotado"))
+                .andExpect(jsonPath("$[1].disponible").value(false));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMINISTRADORA")
+    void deberiaRetornarListaVaciaCuandoNoExistenCoincidencias() throws Exception {
+        when(consultarDisponibilidadMedicamentosUseCase.ejecutar("NoExiste", 25)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/medicamentos/disponibilidad")
+                        .param("termino", "NoExiste")
+                        .param("limite", "25"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    @WithMockUser(roles = "TRABAJADORA")
+    void deberiaRetornarBadRequestCuandoTerminoEsVacioOLimiteInvalido() throws Exception {
+        when(consultarDisponibilidadMedicamentosUseCase.ejecutar("   ", null))
+                .thenThrow(new DatosMedicamentoInvalidosException(
+                        "Debe ingresar un nombre o código de medicamento para buscar."
+                ));
+
+        mockMvc.perform(get("/api/v1/medicamentos/disponibilidad").param("termino", "   "))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+
+        mockMvc.perform(get("/api/v1/medicamentos/disponibilidad")
+                        .param("termino", "Paracetamol")
+                        .param("limite", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    @WithMockUser(roles = "TRABAJADORA")
+    void deberiaRetornarConflictCuandoInventarioTieneDatosInconsistentes() throws Exception {
+        when(consultarDisponibilidadMedicamentosUseCase.ejecutar("MED-ERR", null))
+                .thenThrow(new DatosInventarioInconsistentesException(
+                        "El inventario presenta un stock negativo inconsistente para el medicamento MED-ERR."
+                ));
+
+        mockMvc.perform(get("/api/v1/medicamentos/disponibilidad").param("termino", "MED-ERR"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.message", containsString("MED-ERR")));
     }
 }

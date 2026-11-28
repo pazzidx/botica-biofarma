@@ -5,7 +5,9 @@ import com.biofarma.inventario.domain.repository.MedicamentoRepository;
 import com.biofarma.inventario.infrastructure.persistence.entity.ProductoEntity;
 import com.biofarma.inventario.infrastructure.persistence.mapper.ProductoEntityMapper;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -61,5 +63,30 @@ public class MedicamentoRepositoryAdapter implements MedicamentoRepository {
                 .stream()
                 .map(mapper::toDomain)
                 .toList();
+    }
+
+    @Override
+    public List<Medicamento> buscarActivosPorTermino(String termino, int limite) {
+        if (termino == null || termino.isBlank() || limite < 1) {
+            return List.of();
+        }
+        String normalizado = termino.trim().toLowerCase(Locale.ROOT);
+        String escapado = escaparComodinesLike(normalizado);
+        return springDataRepository.buscarActivosPorTermino(
+                        normalizado,
+                        "%" + escapado + "%",
+                        escapado + "%",
+                        PageRequest.of(0, limite)
+                )
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    private static String escaparComodinesLike(String valor) {
+        return valor
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
     }
 }

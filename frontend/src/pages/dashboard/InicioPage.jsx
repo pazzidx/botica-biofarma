@@ -4,6 +4,7 @@ import {
   Clock,
   Package,
   Receipt,
+  Search,
   Shield,
   ShoppingBag,
   TrendingUp,
@@ -128,6 +129,24 @@ export default function InicioPage() {
               <span className="card-note">
                 Código de trabajadora: <strong>{usuario?.codigoUsuario}</strong>
               </span>
+            </div>
+
+            <div className="action-card is-active-module">
+              <div className="card-header">
+                <div className="card-icon is-primary">
+                  <Search size={24} />
+                </div>
+                <span className="badge-ready">Módulo Habilitado</span>
+              </div>
+              <h2 className="card-title">Consulta de Stock y Precios</h2>
+              <p className="card-desc">
+                Búsqueda rápida de medicamentos activos por código o nombre para verificar
+                disponibilidad y precio en tiempo real.
+              </p>
+              <Link to="/medicamentos/consulta" className="card-action-btn">
+                <span>Consultar medicamentos</span>
+                <ArrowRight size={16} />
+              </Link>
             </div>
 
             <div className="action-card is-upcoming">

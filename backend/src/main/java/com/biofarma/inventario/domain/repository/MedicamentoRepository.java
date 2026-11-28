@@ -18,4 +18,6 @@ public interface MedicamentoRepository {
     List<Medicamento> findAll();
 
     List<Medicamento> findByActivo(boolean activo);
+
+    List<Medicamento> buscarActivosPorTermino(String termino, int limite);
 }

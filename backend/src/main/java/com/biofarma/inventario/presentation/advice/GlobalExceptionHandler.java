@@ -4,6 +4,7 @@ import com.biofarma.inventario.domain.exception.AccesoVentaDenegadoException;
 import com.biofarma.inventario.domain.exception.CodigoMedicamentoDuplicadoException;
 import com.biofarma.inventario.domain.exception.CodigoUsuarioDuplicadoException;
 import com.biofarma.inventario.domain.exception.CredencialesInvalidasException;
+import com.biofarma.inventario.domain.exception.DatosInventarioInconsistentesException;
 import com.biofarma.inventario.domain.exception.DatosMedicamentoInvalidosException;
 import com.biofarma.inventario.domain.exception.DatosUsuarioInvalidosException;
 import com.biofarma.inventario.domain.exception.MedicamentoNoEncontradoException;
@@ -16,6 +17,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +29,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
  * Manejador global de excepciones REST que traduce errores de dominio, validación y seguridad
@@ -34,6 +38,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // -------------------------------------------------------------------------
     // Validación de entrada
@@ -233,6 +239,36 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(DatosInventarioInconsistentesException.class)
+    public ResponseEntity<ApiErrorResponse> handleInconsistentInventory(
+            DatosInventarioInconsistentesException ex,
+            HttpServletRequest request
+    ) {
+        log.error("Inconsistencia detectada en inventario durante consulta en {}: {}",
+                request.getRequestURI(), ex.getMessage());
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                "Inconsistencia de inventario",
+                ex.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorResponse> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Parámetro inválido",
+                "Uno de los parámetros enviados no tiene el formato esperado.",
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
+
     // -------------------------------------------------------------------------
     // Infraestructura y catch-all
     // -------------------------------------------------------------------------
@@ -298,6 +334,7 @@ public class GlobalExceptionHandler {
             Exception ex,
             HttpServletRequest request
     ) {
+        log.error("Error inesperado procesando {}: {}", request.getRequestURI(), ex.getMessage(), ex);
         return buildResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Error interno",

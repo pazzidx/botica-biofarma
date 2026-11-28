@@ -6,6 +6,7 @@ import LoginPage from './pages/auth/LoginPage';
 import InicioPage from './pages/dashboard/InicioPage';
 import UsuariosPage from './pages/auth/UsuariosPage';
 import CatalogoMedicamentosPage from './pages/inventario/CatalogoMedicamentosPage';
+import ConsultaStockPage from './pages/inventario/ConsultaStockPage';
 import HistorialVentasPage from './pages/ventas/HistorialVentasPage';
 import AccesoDenegadoPage from './pages/error/AccesoDenegadoPage';
 
@@ -44,6 +45,16 @@ export default function App() {
               element={
                 <ProtectedRoute allowedRoles={['ADMINISTRADORA']}>
                   <UsuariosPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Consulta de disponibilidad y stock para atención en mostrador (HU-05) */}
+            <Route
+              path="/medicamentos/consulta"
+              element={
+                <ProtectedRoute allowedRoles={['ADMINISTRADORA', 'TRABAJADORA']}>
+                  <ConsultaStockPage />
                 </ProtectedRoute>
               }
             />

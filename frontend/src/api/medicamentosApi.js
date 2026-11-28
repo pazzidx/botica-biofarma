@@ -30,6 +30,19 @@ export async function actualizarMedicamento(idProducto, payload) {
 }
 
 /**
+ * Consulta la disponibilidad y stock actualizado de medicamentos activos por código o nombre (HU-05).
+ * @param {string} termino Término de búsqueda (código o nombre)
+ * @param {AbortSignal} [signal] Señal opcional para cancelar solicitudes obsoletas
+ */
+export async function buscarDisponibilidadMedicamentos(termino, signal) {
+  const { data } = await httpClient.get('/api/v1/medicamentos/disponibilidad', {
+    params: { termino },
+    signal,
+  });
+  return data;
+}
+
+/**
  * Desactiva lógicamente un medicamento del catálogo (HU-04).
  * @param {number} idProducto ID del medicamento
  */

@@ -1,9 +1,11 @@
 package com.biofarma.inventario.presentation.controller;
 
 import com.biofarma.inventario.application.dto.ActualizarMedicamentoRequest;
+import com.biofarma.inventario.application.dto.MedicamentoDisponibilidadResponse;
 import com.biofarma.inventario.application.dto.MedicamentoResponse;
 import com.biofarma.inventario.application.dto.RegistrarMedicamentoRequest;
 import com.biofarma.inventario.application.usecase.ActualizarMedicamentoUseCase;
+import com.biofarma.inventario.application.usecase.ConsultarDisponibilidadMedicamentosUseCase;
 import com.biofarma.inventario.application.usecase.DesactivarMedicamentoUseCase;
 import com.biofarma.inventario.application.usecase.ListarMedicamentosUseCase;
 import com.biofarma.inventario.application.usecase.RegistrarMedicamentoUseCase;
@@ -34,17 +36,29 @@ public class MedicamentoController {
     private final ActualizarMedicamentoUseCase actualizarMedicamentoUseCase;
     private final DesactivarMedicamentoUseCase desactivarMedicamentoUseCase;
     private final ListarMedicamentosUseCase listarMedicamentosUseCase;
+    private final ConsultarDisponibilidadMedicamentosUseCase consultarDisponibilidadMedicamentosUseCase;
 
     public MedicamentoController(
             RegistrarMedicamentoUseCase registrarMedicamentoUseCase,
             ActualizarMedicamentoUseCase actualizarMedicamentoUseCase,
             DesactivarMedicamentoUseCase desactivarMedicamentoUseCase,
-            ListarMedicamentosUseCase listarMedicamentosUseCase
+            ListarMedicamentosUseCase listarMedicamentosUseCase,
+            ConsultarDisponibilidadMedicamentosUseCase consultarDisponibilidadMedicamentosUseCase
     ) {
         this.registrarMedicamentoUseCase = registrarMedicamentoUseCase;
         this.actualizarMedicamentoUseCase = actualizarMedicamentoUseCase;
         this.desactivarMedicamentoUseCase = desactivarMedicamentoUseCase;
         this.listarMedicamentosUseCase = listarMedicamentosUseCase;
+        this.consultarDisponibilidadMedicamentosUseCase = consultarDisponibilidadMedicamentosUseCase;
+    }
+
+    @GetMapping("/disponibilidad")
+    @PreAuthorize("hasAnyRole('ADMINISTRADORA', 'TRABAJADORA')")
+    public ResponseEntity<List<MedicamentoDisponibilidadResponse>> consultarDisponibilidad(
+            @RequestParam(name = "termino", required = false) String termino,
+            @RequestParam(name = "limite", required = false) Integer limite
+    ) {
+        return ResponseEntity.ok(consultarDisponibilidadMedicamentosUseCase.ejecutar(termino, limite));
     }
 
     @GetMapping
